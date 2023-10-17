@@ -5,6 +5,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from itertools import combinations
 from collections import namedtuple
+from collections.abc import Iterable
 from scipy.cluster.hierarchy import dendrogram
 from scipy.spatial import distance
 from sklearn import datasets
@@ -31,7 +32,7 @@ for c in range(3):
     errors_df = pd.concat([errors_df, pd.Series(prediction_error, name=c)], axis=1)
 
 
-# Plot a beautiful boxplot with seaborn, using target names as labels
+# Plot a boxplot with seaborn, using target names as labels
 only_errors = errors_df.loc[:, range(3)]
 only_errors.columns = iris.target_names
 only_errors = only_errors.melt(var_name='class', value_name='error')
@@ -159,7 +160,7 @@ for class_of_interest in range(3):
         num_target,
         searchspace,
         result_set_size=20,
-        depth=4,
+        depth=2,
         qf=BidirectionalQFNumeric(a=0.5))
     print('Mining relevant subgroups...')
     result = ps.BeamSearch().execute(task=task)
@@ -211,6 +212,70 @@ df_regras = df_regras.replace({'subgroup': mapa_regras,
                                'class': {0: 'setosa',
                                          1: 'versicolor',
                                          2: 'virginica'}})
+
+# Plot a 2D scatterplot showing the samples, its classes, and the subgroups passed as parameters
+# to the function
+def plot_subgroups(data: pd.DataFrame,
+                   x_column: str,
+                   y_column: str,
+                   target: Iterable,
+                   subgroups: pd.DataFrame,
+                   ax=None):
+    if ax is None:
+        ax = plt.gca()
+
+    sns.scatterplot(data=data,
+                    x=x_column,
+                    y=y_column,
+                    hue=target,
+                    s=20, alpha=0.5, ax=ax)
+    # Rectangle displacement, estimated from my head
+    delta = 0.02
+    for subgroup in subgroups.itertuples(index=False):
+        # extract the subgroup limits
+        rule1, rule2 = subgroup.subgroup.selectors
+        if isinstance(rule1, ps.IntervalSelector):
+            rule1_upperbound = rule1.upper_bound
+            rule1_lowerbound = rule1.lower_bound
+            rule1_attribute = rule1.attribute_name
+            if rule1_lowerbound == float("-inf"):
+                rule1_lowerbound = data[rule1_attribute].min()
+            if rule1_upperbound == float("inf"):
+                rule1_upperbound = data[rule1_attribute].max()
+        if isinstance(rule2, ps.IntervalSelector):
+            rule2_upperbound = rule2.upper_bound
+            rule2_lowerbound = rule2.lower_bound
+            rule2_attribute = rule2.attribute_name
+            if rule2_lowerbound == float("-inf"):
+                rule2_lowerbound = data[rule2_attribute].min()
+            if rule2_upperbound == float("inf"):
+                rule2_upperbound = data[rule2_attribute].max()
+        # draw a red or green rectangle around the region of interest
+        if subgroup.mean_sg > subgroup.mean_dataset:
+            color = 'red'
+        else:
+            color = 'green'
+        if rule1_attribute == x_column:
+            ax.add_patch(plt.Rectangle((rule1_lowerbound - delta, rule2_lowerbound - delta),
+                                       width=rule1_upperbound - rule1_lowerbound + 2*delta,
+                                       height=rule2_upperbound - rule2_lowerbound + 2*delta,
+                                       fill=False, edgecolor=color, linewidth=1))
+            ax.text(rule1_lowerbound, rule2_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
+            ax.text(rule1_upperbound, rule2_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
+        else:
+            ax.add_patch(plt.Rectangle((rule2_lowerbound - delta, rule1_lowerbound - delta),
+                                       width=rule2_upperbound - rule2_lowerbound + 2*delta,
+                                       height=rule1_upperbound - rule1_lowerbound + 2*delta,
+                                       fill=False, edgecolor=color, linewidth=1))
+            ax.text(rule2_lowerbound, rule1_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
+            ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
+    return ax
+
+
+plot_subgroups(pd.DataFrame(X, columns=iris.feature_names),
+               'petal width (cm)', 'petal length (cm)',
+               [iris.target_names[x] for x in y_multi],
+               df_regras.loc[[6, 9, 20, 27], ['subgroup', 'mean_sg', 'mean_dataset']])
 
 # Plot a Venn Diagram to compare which subgroups were identified as hard or easy for each of the models
 set_list = []
