@@ -36,6 +36,7 @@ for c in range(3):
 only_errors = errors_df.loc[:, range(3)]
 only_errors.columns = iris.target_names
 only_errors = only_errors.melt(var_name='class', value_name='error')
+plt.figure()
 sns.boxplot(x='class', y='error', data=only_errors)
 plt.show()
 # Print the average error for each class
@@ -83,9 +84,7 @@ class BidirectionalQFNumeric(ps.BoundedInterestingnessMeasure):
             self.read_centroid(statistics),
         )
 
-    def calculate_statistics(
-        self, subgroup, target, data, statistics=None
-    ):  # pylint: disable=unused-argument
+    def calculate_statistics(self, subgroup, target, data, statistics=None):  # pylint: disable=unused-argument
         cover_arr, sg_size = ps.get_cover_array_and_size(
             subgroup, len(self.all_target_values), data
         )
@@ -123,9 +122,7 @@ class BidirectionalQFNumeric(ps.BoundedInterestingnessMeasure):
         def get_data(self, data, target):  # pylint: disable=unused-argument
             return data
 
-        def calculate_constant_statistics(
-            self, data, target
-        ):  # pylint: disable=unused-argument
+        def calculate_constant_statistics(self, data, target):  # pylint: disable=unused-argument
             self.indices_greater_centroid = (
                 self.qf.all_target_values
                 > self.qf.read_centroid(self.qf.dataset_statistics)
@@ -134,9 +131,7 @@ class BidirectionalQFNumeric(ps.BoundedInterestingnessMeasure):
                 self.qf.all_target_values
             )  # [self.indices_greater_mean]
 
-        def get_estimate(
-            self, subgroup, sg_size, sg_centroid, cover_arr, _
-        ):  # pylint: disable=unused-argument
+        def get_estimate(self, subgroup, sg_size, sg_centroid, cover_arr, _):  # pylint: disable=unused-argument
             larger_than_centroid = self.target_values_greater_centroid[cover_arr][
                 self.indices_greater_centroid[cover_arr]
             ]
@@ -213,6 +208,7 @@ df_regras = df_regras.replace({'subgroup': mapa_regras,
                                          1: 'versicolor',
                                          2: 'virginica'}})
 
+
 # Plot a 2D scatterplot showing the samples, its classes, and the subgroups passed as parameters
 # to the function
 def plot_subgroups(data: pd.DataFrame,
@@ -233,23 +229,45 @@ def plot_subgroups(data: pd.DataFrame,
     delta = 0.02
     for subgroup in subgroups.itertuples(index=False):
         # extract the subgroup limits
-        rule1, rule2 = subgroup.subgroup.selectors
-        if isinstance(rule1, ps.IntervalSelector):
-            rule1_upperbound = rule1.upper_bound
-            rule1_lowerbound = rule1.lower_bound
-            rule1_attribute = rule1.attribute_name
-            if rule1_lowerbound == float("-inf"):
-                rule1_lowerbound = data[rule1_attribute].min()
-            if rule1_upperbound == float("inf"):
-                rule1_upperbound = data[rule1_attribute].max()
-        if isinstance(rule2, ps.IntervalSelector):
-            rule2_upperbound = rule2.upper_bound
-            rule2_lowerbound = rule2.lower_bound
-            rule2_attribute = rule2.attribute_name
-            if rule2_lowerbound == float("-inf"):
-                rule2_lowerbound = data[rule2_attribute].min()
-            if rule2_upperbound == float("inf"):
-                rule2_upperbound = data[rule2_attribute].max()
+        rules = subgroup.subgroup.selectors
+        if len(rules) < 2:
+            rule = rules[0]
+            if isinstance(rule, ps.IntervalSelector):
+                rule1_upperbound = rule.upper_bound
+                rule1_lowerbound = rule.lower_bound
+                rule1_attribute = rule.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            if rule1_attribute == x_column:
+                rule2_attribute = y_column
+            else:
+                rule2_attribute = x_column
+            rule2_lowerbound = data[rule2_attribute].min()
+            rule2_upperbound = data[rule2_attribute].max()
+        else:
+            rule1, rule2 = subgroup.subgroup.selectors
+            if isinstance(rule1, ps.IntervalSelector):
+                rule1_upperbound = rule1.upper_bound
+                rule1_lowerbound = rule1.lower_bound
+                rule1_attribute = rule1.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            else:
+                raise(NotImplementedError("I still can't deal with non numeric features!"))
+            if isinstance(rule2, ps.IntervalSelector):
+                rule2_upperbound = rule2.upper_bound
+                rule2_lowerbound = rule2.lower_bound
+                rule2_attribute = rule2.attribute_name
+                if rule2_lowerbound == float("-inf"):
+                    rule2_lowerbound = data[rule2_attribute].min()
+                if rule2_upperbound == float("inf"):
+                    rule2_upperbound = data[rule2_attribute].max()
+            else:
+                raise(NotImplementedError("I still can't deal with non numeric features!"))
         # draw a red or green rectangle around the region of interest
         if subgroup.mean_sg > subgroup.mean_dataset:
             color = 'red'
@@ -271,11 +289,12 @@ def plot_subgroups(data: pd.DataFrame,
             ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
     return ax
 
-
+plt.figure()
 plot_subgroups(pd.DataFrame(X, columns=iris.feature_names),
                'petal width (cm)', 'petal length (cm)',
                [iris.target_names[x] for x in y_multi],
-               df_regras.loc[[6, 9, 20, 27], ['subgroup', 'mean_sg', 'mean_dataset']])
+               df_regras.loc[[6, 20, 27, 56], ['subgroup', 'mean_sg', 'mean_dataset']])
+plt.show()
 
 # Plot a Venn Diagram to compare which subgroups were identified as hard or easy for each of the models
 set_list = []
@@ -302,14 +321,14 @@ def jaccard(set1, set2):
     return sum(set1 & set2) / sum(set1 | set2)
 
 
-jaccard_generator = (jaccard(row1, row2) for row1, row2 in combinations(df_interesse['covered'], r=2))
+jaccard_generator = (1 - jaccard(row1, row2) for row1, row2 in combinations(df_interesse['covered'], r=2))
 flattened_matrix = np.fromiter(jaccard_generator, dtype=np.float64)
 
 # since flattened_matrix is the flattened upper triangle of the matrix
 # we need to expand it.
 normal_matrix = distance.squareform(flattened_matrix)
 # replacing zeros with ones at the diagonal.
-normal_matrix += np.identity(len(df_interesse['covered']))
+# normal_matrix += np.identity(len(df_interesse['covered']))
 
 # setting distance_threshold=0 ensures we compute the full tree.
 ac = AgglomerativeClustering(distance_threshold=0, n_clusters=None, affinity='precomputed', linkage='average')
@@ -339,11 +358,18 @@ def plot_dendrogram(model, **kwargs):
     dendrogram(linkage_matrix, **kwargs)
 
 
-plt.title("Hierarchical Clustering Dendrogram")
+# Make the feature names shorter for the visualization
+df_interesse.loc[:, 'subgroup'] = df_interesse['subgroup'].apply(lambda x: x.__str__().replace('sepal width (cm)', 'sw'))
+df_interesse.loc[:, 'subgroup'] = df_interesse['subgroup'].apply(lambda x: x.__str__().replace('sepal length (cm)', 'sl'))
+df_interesse.loc[:, 'subgroup'] = df_interesse['subgroup'].apply(lambda x: x.__str__().replace('petal width (cm)', 'pw'))
+df_interesse.loc[:, 'subgroup'] = df_interesse['subgroup'].apply(lambda x: x.__str__().replace('petal length (cm)', 'pl'))
+
 # plot the top three levels of the dendrogram
 plt.figure()
 plot_dendrogram(ac, truncate_mode="level", p=13, orientation='left',
                 labels=list(df_interesse['subgroup']), leaf_font_size=8.)
+plt.title("Hierarchical Clustering Dendrogram")
+plt.xlim(1, 0.5)
 plt.tight_layout()
 # plt.xlabel("Number of points in node (or index of point if no parenthesis).")
 plt.show()
