@@ -319,12 +319,18 @@ df_interesse.drop_duplicates(subset='subgroup', inplace=True)
 
 
 # Pre-calculating the Jaccard Index
-def jaccard(set1, set2):
+def boolean_jaccard(set1, set2):
     return sum(set1 & set2) / sum(set1 | set2)
+def sets_jaccard(set1, set2):
+    return len(set1.intersection(set2)) / len(set1.union(set2))
 
 
-jaccard_generator = (1 - jaccard(row1, row2) for row1, row2 in combinations(df_interesse['covered'], r=2))
-flattened_matrix = np.fromiter(jaccard_generator, dtype=np.float64)
+jaccard_generator1 = (1 - boolean_jaccard(row1, row2) for row1, row2 in combinations(df_interesse['covered'], r=2))
+jaccard_generator2 = (1 - sets_jaccard(set(row1.selectors),
+                                  set(row2.selectors)) for row1, row2 in combinations(df_interesse['subgroup'], r=2))
+flattened_matrix1 = np.fromiter(jaccard_generator1, dtype=np.float64)
+flattened_matrix2 = np.fromiter(jaccard_generator2, dtype=np.float64)
+flattened_matrix = np.minimum(flattened_matrix1, flattened_matrix2)
 
 # since flattened_matrix is the flattened upper triangle of the matrix
 # we need to expand it.
@@ -371,7 +377,7 @@ plt.figure()
 plot_dendrogram(ac, truncate_mode="level", p=13, orientation='left',
                 labels=list(df_interesse['subgroup']), leaf_font_size=8.)
 plt.title("Hierarchical Clustering Dendrogram")
-plt.xlim(1, 0.5)
+plt.xlim(1, 0.45)
 plt.tight_layout()
 # plt.xlabel("Number of points in node (or index of point if no parenthesis).")
 plt.show()
