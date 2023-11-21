@@ -1,0 +1,2 @@
+/home/lfrf/ufmg/poc/uncertainty-regions/data/iris.csv
+/home/lfrf/ufmg/poc/uncertainty-regions/data/errors.csv

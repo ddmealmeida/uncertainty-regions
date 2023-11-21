@@ -150,8 +150,9 @@ def subgroup_discovery(
             qf=BidirectionalQFNumeric(a=0.5),
         )
         print("Mining relevant subgroups...")
+        print(X_sd)
         result = ps.BeamSearch().execute(task=task)
-        print("oi")
+        print("ofghhfghfggi")
         df_regras = result.to_dataframe()
         df_regras["covered"] = df_regras["subgroup"].apply(lambda x: x.covers(X_sd))
         df_regras["class"] = class_of_interest
