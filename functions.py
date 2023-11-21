@@ -136,7 +136,7 @@ class BidirectionalQFNumeric(ps.BoundedInterestingnessMeasure):
 def subgroup_discovery(
     dataset_df: pd.DataFrame, errors_df: pd.DataFrame, number_of_classes: int
 ) -> dict:
-
+    target = dataset_df.target.copy()
     dataset_df.drop("target", axis=1, inplace=True)
 
     X_sd = pd.concat([dataset_df, errors_df], axis=1)
@@ -158,6 +158,7 @@ def subgroup_discovery(
         df_regras["covered"] = df_regras["subgroup"].apply(lambda x: x.covers(X_sd))
         df_regras["class"] = class_of_interest
         df_dict[str(class_of_interest)] = df_regras.copy()
+    dataset_df.target = target
     return df_dict
 
 
@@ -205,76 +206,65 @@ def plot_subgroups(
     # Rectangle displacement, estimated from my head
     delta = 0.02
     for subgroup in subgroups.itertuples(index=False):
-        # extract the subgroup limits
-        print(subgroup.subgroup.selectors)
-        rule1, rule2 = subgroup.subgroup.selectors
-        if isinstance(rule1, ps.IntervalSelector):
-            rule1_upperbound = rule1.upper_bound
-            rule1_lowerbound = rule1.lower_bound
-            rule1_attribute = rule1.attribute_name
-            if rule1_lowerbound == float("-inf"):
-                rule1_lowerbound = data[rule1_attribute].min()
-            if rule1_upperbound == float("inf"):
-                rule1_upperbound = data[rule1_attribute].max()
-        if isinstance(rule2, ps.IntervalSelector):
-            rule2_upperbound = rule2.upper_bound
-            rule2_lowerbound = rule2.lower_bound
-            rule2_attribute = rule2.attribute_name
-            if rule2_lowerbound == float("-inf"):
-                rule2_lowerbound = data[rule2_attribute].min()
-            if rule2_upperbound == float("inf"):
-                rule2_upperbound = data[rule2_attribute].max()
+    # extract the subgroup limits
+        rules = subgroup.subgroup.selectors
+        if len(rules) < 2:
+            rule = rules[0]
+            if isinstance(rule, ps.IntervalSelector):
+                rule1_upperbound = rule.upper_bound
+                rule1_lowerbound = rule.lower_bound
+                rule1_attribute = rule.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            if rule1_attribute == x_column:
+                rule2_attribute = y_column
+            else:
+                rule2_attribute = x_column
+            rule2_lowerbound = data[rule2_attribute].min()
+            rule2_upperbound = data[rule2_attribute].max()
+        else:
+            rule1, rule2 = subgroup.subgroup.selectors
+            if isinstance(rule1, ps.IntervalSelector):
+                rule1_upperbound = rule1.upper_bound
+                rule1_lowerbound = rule1.lower_bound
+                rule1_attribute = rule1.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            else:
+                raise(NotImplementedError("I still can't deal with non numeric features!"))
+            if isinstance(rule2, ps.IntervalSelector):
+                rule2_upperbound = rule2.upper_bound
+                rule2_lowerbound = rule2.lower_bound
+                rule2_attribute = rule2.attribute_name
+                if rule2_lowerbound == float("-inf"):
+                    rule2_lowerbound = data[rule2_attribute].min()
+                if rule2_upperbound == float("inf"):
+                    rule2_upperbound = data[rule2_attribute].max()
+            else:
+                raise(NotImplementedError("I still can't deal with non numeric features!"))
         # draw a red or green rectangle around the region of interest
         if subgroup.mean_sg > subgroup.mean_dataset:
-            color = "red"
+            color = 'red'
         else:
-            color = "green"
+            color = 'green'
         if rule1_attribute == x_column:
-            ax.add_patch(
-                plt.Rectangle(
-                    (rule1_lowerbound - delta, rule2_lowerbound - delta),
-                    width=rule1_upperbound - rule1_lowerbound + 2 * delta,
-                    height=rule2_upperbound - rule2_lowerbound + 2 * delta,
-                    fill=False,
-                    edgecolor=color,
-                    linewidth=1,
-                )
-            )
-            ax.text(
-                rule1_lowerbound,
-                rule2_lowerbound,
-                round(subgroup.mean_sg, 4),
-                fontsize=8,
-            )
-            ax.text(
-                rule1_upperbound,
-                rule2_upperbound,
-                round(subgroup.mean_dataset, 4),
-                fontsize=8,
-            )
+            ax.add_patch(plt.Rectangle((rule1_lowerbound - delta, rule2_lowerbound - delta),
+                                        width=rule1_upperbound - rule1_lowerbound + 2*delta,
+                                        height=rule2_upperbound - rule2_lowerbound + 2*delta,
+                                        fill=False, edgecolor=color, linewidth=1))
+            ax.text(rule1_lowerbound, rule2_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
+            ax.text(rule1_upperbound, rule2_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
         else:
-            ax.add_patch(
-                plt.Rectangle(
-                    (rule2_lowerbound - delta, rule1_lowerbound - delta),
-                    width=rule2_upperbound - rule2_lowerbound + 2 * delta,
-                    height=rule1_upperbound - rule1_lowerbound + 2 * delta,
-                    fill=False,
-                    edgecolor=color,
-                    linewidth=1,
-                )
-            )
-            ax.text(
-                rule2_lowerbound,
-                rule1_lowerbound,
-                round(subgroup.mean_sg, 4),
-                fontsize=8,
-            )
-            ax.text(
-                rule2_upperbound,
-                rule1_upperbound,
-                round(subgroup.mean_dataset, 4),
-                fontsize=8,
-            )
+            ax.add_patch(plt.Rectangle((rule2_lowerbound - delta, rule1_lowerbound - delta),
+                                        width=rule2_upperbound - rule2_lowerbound + 2*delta,
+                                        height=rule1_upperbound - rule1_lowerbound + 2*delta,
+                                        fill=False, edgecolor=color, linewidth=1))
+            ax.text(rule2_lowerbound, rule1_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
+            ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
     return ax.get_figure()
 
 
