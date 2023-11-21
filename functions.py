@@ -143,7 +143,7 @@ def subgroup_discovery(
     df_dict = {}
     for class_of_interest in range(number_of_classes):
         num_target = ps.NumericTarget(class_of_interest)
-        searchspace = ps.create_selectors(X_sd, ignore=range(5))
+        searchspace = ps.create_selectors(X_sd, ignore=range(number_of_classes))
         task = ps.SubgroupDiscoveryTask(
             X_sd,
             num_target,
@@ -153,9 +153,7 @@ def subgroup_discovery(
             qf=BidirectionalQFNumeric(a=0.5),
         )
         print("Mining relevant subgroups...")
-        print(X_sd)
         result = ps.BeamSearch().execute(task=task)
-        print("ofghhfghfggi")
         df_regras = result.to_dataframe()
         df_regras["covered"] = df_regras["subgroup"].apply(lambda x: x.covers(X_sd))
         df_regras["class"] = class_of_interest

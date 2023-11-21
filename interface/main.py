@@ -18,15 +18,23 @@ def main() -> None:
         errors_file_path = f.readline()
         dataset_df: pd.DataFrame = pd.read_csv(dataset_file_path)
         errors_df: pd.DataFrame = pd.read_csv(errors_file_path)
+        errors_df.rename(columns={"0": 0, "1": 1, "2": 2}, inplace=True)
 
     # apply subgroup discovery
     df_dict: dict = subgroup_discovery(
         dataset_df=dataset_df, errors_df=errors_df, number_of_classes=3
     )
 
+    # changing column subgroup to be string
+    for cls in range(3):
+        df_dict[str(cls)].subgroup = df_dict[str(cls)].subgroup.astype(str)
+
     app = Dash(external_stylesheets=[BOOTSTRAP])
     app.title = "Uncertainty Regions"
-    app.layout = create_layout(app=app)
+    app.layout = create_dataframe_table(
+        app=app, df=df_dict["0"][["subgroup", "size_sg"]]
+    )
+
     app.run(debug=True)
 
 

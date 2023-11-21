@@ -146,7 +146,7 @@ class BidirectionalQFNumeric(ps.BoundedInterestingnessMeasure):
 # Run the subgroup discovery for each model using Beam Search as the search algorithm, using the custom quality function
 # defined above
 X_sd = pd.concat([pd.DataFrame(X, columns=iris['feature_names']), errors_df], axis=1)
-print(X_sd)
+print(X_sd.columns)
 exit(0)
 df_dict = {}
 for class_of_interest in range(3):
