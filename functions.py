@@ -136,6 +136,9 @@ class BidirectionalQFNumeric(ps.BoundedInterestingnessMeasure):
 def subgroup_discovery(
     dataset_df: pd.DataFrame, errors_df: pd.DataFrame, number_of_classes: int
 ) -> dict:
+
+    dataset_df.drop("target", axis=1, inplace=True)
+
     X_sd = pd.concat([dataset_df, errors_df], axis=1)
     df_dict = {}
     for class_of_interest in range(number_of_classes):
