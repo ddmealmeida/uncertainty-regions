@@ -36,7 +36,7 @@ def main() -> None:
         app=app, df=df_dict["0"][["subgroup_str", "size_sg"]]
     )
 
-    app.layout = create_2d_plot(
+    """ app.layout = create_2d_plot(
         app=app,
         dataset_df=dataset_df,
         x_column="petal width (cm)",
@@ -45,7 +45,7 @@ def main() -> None:
         subgroups=df_dict["0"].loc[
             [1, 2, 3, 4], ["subgroup", "mean_sg", "mean_dataset"]
         ],
-    )
+    ) """
 
     app.run(debug=True)
 

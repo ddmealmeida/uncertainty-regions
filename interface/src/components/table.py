@@ -1,12 +1,11 @@
 from dash import html, Dash, dash_table, Input, Output, callback
+from . import subgroups_dropdown
 import pandas as pd
 
-
 def create_dataframe_table(app: Dash, df: pd.DataFrame) -> None:
-
     return html.Div(
-        [
-            html.H1("Tabela de subgrupos"),
+        children=[
+            html.H1("Tabela de subgrupos", style={"textAlign": "center"}),
             dash_table.DataTable(
                 id="rules_table",
                 data=df.to_dict("records"),
@@ -39,6 +38,10 @@ def create_dataframe_table(app: Dash, df: pd.DataFrame) -> None:
                     "textAlign": "center",
                 },
                 page_size=min(df.shape[0], 20),
+            ),
+            html.Div(
+                className="dropdown-container",
+                children=[subgroups_dropdown.render(app=app, df=df)],
             ),
         ]
     )
