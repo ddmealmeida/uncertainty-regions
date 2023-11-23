@@ -3,6 +3,7 @@ import pandas as pd
 import pysubgroup as ps
 import seaborn as sns
 import matplotlib.pyplot as plt
+plt.switch_backend("agg")
 from itertools import combinations
 from collections import namedtuple
 from collections.abc import Iterable
@@ -203,6 +204,11 @@ def plot_subgroups(
     sns.scatterplot(
         data=data, x=x_column, y=y_column, hue=target, s=20, alpha=0.5, ax=ax
     )
+
+    # if subgroup is None, plot only the data
+    if subgroups is None:
+        return ax.get_figure()
+
     # Rectangle displacement, estimated from my head
     delta = 0.02
     for subgroup in subgroups.itertuples(index=False):
