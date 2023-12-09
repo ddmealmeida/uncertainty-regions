@@ -7,7 +7,15 @@ import pandas as pd
 def create_layout(
     app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame
 ) -> None:
-    table_subgroups_df: pd.Dataframe = subgroups_df[["subgroup_str", "size_sg"]]
+    table_subgroups_df: pd.Dataframe = subgroups_df[
+        ["subgroup_str", "size_sg", "mean_sg"]
+    ].rename(
+        columns={
+            "subgroup_str": "Subgrupo",
+            "size_sg": "Tamanho",
+            "mean_sg": "Erro médio do subgrupo",
+        }
+    )
     return html.Div(
         id=ids.MAIN_LAYOUT_ID,
         children=[
@@ -16,7 +24,6 @@ def create_layout(
                 id="rules_table",
                 data=table_subgroups_df.to_dict("records"),
                 columns=[{"id": c, "name": c} for c in table_subgroups_df.columns],
-                style_as_list_view=True,
                 style_cell={
                     "textAlign": "center",
                     "overflow": "hidden",
@@ -37,6 +44,7 @@ def create_layout(
                     "height": "auto",
                     "line_height": "30px",
                     "whiteSpace": "normal",
+                    "color": "black",
                 },
                 style_header={
                     "backgroundColor": "white",

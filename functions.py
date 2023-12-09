@@ -3,6 +3,7 @@ import pandas as pd
 import pysubgroup as ps
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 plt.switch_backend("agg")
 from itertools import combinations
 from collections import namedtuple
@@ -14,6 +15,7 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.ensemble import RandomForestClassifier
 from tqdm import tqdm
 from venn import venn
+import plotly.express as px
 
 
 def boxplot(errors_df: pd.DataFrame, target_names: list[str]) -> None:
@@ -212,7 +214,7 @@ def plot_subgroups(
     # Rectangle displacement, estimated from my head
     delta = 0.02
     for subgroup in subgroups.itertuples(index=False):
-    # extract the subgroup limits
+        # extract the subgroup limits
         rules = subgroup.subgroup.selectors
         if len(rules) < 2:
             rule = rules[0]
@@ -241,7 +243,9 @@ def plot_subgroups(
                 if rule1_upperbound == float("inf"):
                     rule1_upperbound = data[rule1_attribute].max()
             else:
-                raise(NotImplementedError("I still can't deal with non numeric features!"))
+                raise (
+                    NotImplementedError("I still can't deal with non numeric features!")
+                )
             if isinstance(rule2, ps.IntervalSelector):
                 rule2_upperbound = rule2.upper_bound
                 rule2_lowerbound = rule2.lower_bound
@@ -251,26 +255,60 @@ def plot_subgroups(
                 if rule2_upperbound == float("inf"):
                     rule2_upperbound = data[rule2_attribute].max()
             else:
-                raise(NotImplementedError("I still can't deal with non numeric features!"))
+                raise (
+                    NotImplementedError("I still can't deal with non numeric features!")
+                )
         # draw a red or green rectangle around the region of interest
         if subgroup.mean_sg > subgroup.mean_dataset:
-            color = 'red'
+            color = "red"
         else:
-            color = 'green'
+            color = "green"
         if rule1_attribute == x_column:
-            ax.add_patch(plt.Rectangle((rule1_lowerbound - delta, rule2_lowerbound - delta),
-                                        width=rule1_upperbound - rule1_lowerbound + 2*delta,
-                                        height=rule2_upperbound - rule2_lowerbound + 2*delta,
-                                        fill=False, edgecolor=color, linewidth=1))
-            ax.text(rule1_lowerbound, rule2_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
-            ax.text(rule1_upperbound, rule2_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
+            ax.add_patch(
+                plt.Rectangle(
+                    (rule1_lowerbound - delta, rule2_lowerbound - delta),
+                    width=rule1_upperbound - rule1_lowerbound + 2 * delta,
+                    height=rule2_upperbound - rule2_lowerbound + 2 * delta,
+                    fill=False,
+                    edgecolor=color,
+                    linewidth=1,
+                )
+            )
+            ax.text(
+                rule1_lowerbound,
+                rule2_lowerbound,
+                round(subgroup.mean_sg, 4),
+                fontsize=8,
+            )
+            ax.text(
+                rule1_upperbound,
+                rule2_upperbound,
+                round(subgroup.mean_dataset, 4),
+                fontsize=8,
+            )
         else:
-            ax.add_patch(plt.Rectangle((rule2_lowerbound - delta, rule1_lowerbound - delta),
-                                        width=rule2_upperbound - rule2_lowerbound + 2*delta,
-                                        height=rule1_upperbound - rule1_lowerbound + 2*delta,
-                                        fill=False, edgecolor=color, linewidth=1))
-            ax.text(rule2_lowerbound, rule1_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
-            ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
+            ax.add_patch(
+                plt.Rectangle(
+                    (rule2_lowerbound - delta, rule1_lowerbound - delta),
+                    width=rule2_upperbound - rule2_lowerbound + 2 * delta,
+                    height=rule1_upperbound - rule1_lowerbound + 2 * delta,
+                    fill=False,
+                    edgecolor=color,
+                    linewidth=1,
+                )
+            )
+            ax.text(
+                rule2_lowerbound,
+                rule1_lowerbound,
+                round(subgroup.mean_sg, 4),
+                fontsize=8,
+            )
+            ax.text(
+                rule2_upperbound,
+                rule1_upperbound,
+                round(subgroup.mean_dataset, 4),
+                fontsize=8,
+            )
     return ax.get_figure()
 
 
@@ -329,3 +367,132 @@ def remove_redundant_subgroups(df_dict):
         }
     )
     return df_regras
+
+
+def plot_subgroups_px(
+    data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    target: Iterable,
+    subgroups: pd.DataFrame,
+):
+    fig = px.scatter(data, x=x_column, y=y_column, color=[str(x) for x in target])
+
+    # if subgroup is None, plot only the data
+    if subgroups is None:
+        return fig
+
+    rectangle_line_width = 2.0
+
+    # Rectangle displacement, estimated from my head
+    delta = 0.02
+    for subgroup in subgroups.itertuples(index=False):
+        # extract the subgroup limits
+        rules = subgroup.subgroup.selectors
+        if len(rules) < 2:
+            rule = rules[0]
+            if isinstance(rule, ps.IntervalSelector):
+                rule1_upperbound = rule.upper_bound
+                rule1_lowerbound = rule.lower_bound
+                rule1_attribute = rule.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            if rule1_attribute == x_column:
+                rule2_attribute = y_column
+            else:
+                rule2_attribute = x_column
+            rule2_lowerbound = data[rule2_attribute].min()
+            rule2_upperbound = data[rule2_attribute].max()
+        else:
+            rule1, rule2 = subgroup.subgroup.selectors
+            if isinstance(rule1, ps.IntervalSelector):
+                rule1_upperbound = rule1.upper_bound
+                rule1_lowerbound = rule1.lower_bound
+                rule1_attribute = rule1.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            else:
+                raise (
+                    NotImplementedError("I still can't deal with non numeric features!")
+                )
+            if isinstance(rule2, ps.IntervalSelector):
+                rule2_upperbound = rule2.upper_bound
+                rule2_lowerbound = rule2.lower_bound
+                rule2_attribute = rule2.attribute_name
+                if rule2_lowerbound == float("-inf"):
+                    rule2_lowerbound = data[rule2_attribute].min()
+                if rule2_upperbound == float("inf"):
+                    rule2_upperbound = data[rule2_attribute].max()
+            else:
+                raise (
+                    NotImplementedError("I still can't deal with non numeric features!")
+                )
+        # draw a red or green rectangle around the region of interest
+        if subgroup.mean_sg > subgroup.mean_dataset:
+            color = "red"
+        else:
+            color = "green"
+        if rule1_attribute == x_column:
+            x0 = rule1_lowerbound - delta
+            y0 = rule2_upperbound - delta
+            width = rule1_upperbound - rule1_lowerbound + 2 * delta
+            height = rule2_upperbound - rule2_lowerbound + 2 * delta
+            fig.add_shape(
+                type="rect",
+                x0=x0,
+                y0=y0,
+                x1=x0 + width,
+                y1=y0 + height,
+                line=dict(color=color, width=rectangle_line_width),
+            )
+            fig.add_annotation(
+                x=x0,
+                y=y0,
+                text=round(subgroup.mean_sg, 4),
+                showarrow=False,
+                xanchor="right",
+                yanchor="top",
+            )
+
+            fig.add_annotation(
+                x=x0 + width,
+                y=y0 + height,
+                text=round(subgroup.mean_dataset, 4),
+                showarrow=False,
+                xanchor="left",
+                yanchor="bottom",
+            )
+        else:
+            x0 = rule2_lowerbound - delta
+            y0 = rule1_upperbound - delta
+            width = rule2_upperbound - rule2_lowerbound + 2 * delta
+            height = rule1_upperbound - rule1_lowerbound + 2 * delta
+            fig.add_shape(
+                type="rect",
+                x0=x0,
+                y0=y0,
+                x1=x0 + width,
+                y1=y0 + height,
+                line=dict(color=color, width=rectangle_line_width),
+            )
+            fig.add_annotation(
+                x=x0,
+                y=y0,
+                text=round(subgroup.mean_sg, 4),
+                showarrow=False,
+                xanchor="right",
+                yanchor="top",
+            )
+            fig.add_annotation(
+                x=x0 + width,
+                y=y0 + height,
+                text=round(subgroup.mean_dataset, 4),
+                showarrow=False,
+                xanchor="left",
+                yanchor="bottom",
+            )
+    return fig

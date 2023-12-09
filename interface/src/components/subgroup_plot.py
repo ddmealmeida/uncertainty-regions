@@ -1,5 +1,4 @@
-from dash import html, Dash
-import dash_core_components
+from dash import html, Dash, dcc
 import pandas as pd
 from collections.abc import Iterable
 from . import ids
@@ -10,7 +9,7 @@ import sys
 import plotly.express as px
 
 sys.path.append("..")
-from functions import plot_subgroups
+from functions import plot_subgroups, plot_subgroups_px
 
 
 def render(
@@ -21,23 +20,18 @@ def render(
     target: Iterable,
     subgroups: pd.DataFrame,
 ) -> None:
-
-
-    fig = plot_subgroups(
+    fig = plot_subgroups_px(
         data=dataset_df,
         x_column=x_column,
         y_column=y_column,
         target=target,
         subgroups=subgroups,
     )
+    # First plot should create html.Div with no plot
+    if subgroups is None:
+        return html.Div(
+            [html.H4("Subgroups"), dcc.Graph(id=ids.SUBGROUPS_PLOT_ID)]
+        )
 
-    buf = BytesIO()
-    fig.savefig(buf, format="png")
-    fig_data = base64.b64encode(buf.getbuffer()).decode("ascii")
-    buf.close()
-    fig_bar_matplotlib = f"data:image/png;base64,{fig_data}"
-
-    return html.Div(
-        style={"width": "50%", "margin": "auto"},
-        children=[html.Img(id="example", src=fig_bar_matplotlib)],
-    )
+    # Every subsequent render call should just return the figure to update the plot
+    return fig

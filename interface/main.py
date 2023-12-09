@@ -33,7 +33,7 @@ def main() -> None:
     app.layout = create_layout(
         app=app,
         dataset_df=dataset_df,
-        subgroups_df=df_dict["0"][
+        subgroups_df=df_dict["1"][
             ["subgroup", "subgroup_str", "size_sg", "mean_sg", "mean_dataset"]
         ],
     )
