@@ -1,5 +1,11 @@
 from dash import html, Dash, dash_table, Input, Output, callback
-from . import subgroups_dropdown, subgroup_plot, dendrogram_plot, subgroups_table
+from . import (
+    subgroups_dropdown,
+    subgroup_plot,
+    dendrogram_plot,
+    subgroups_table,
+    venn_diagram_plot,
+)
 from . import ids
 import pandas as pd
 
@@ -8,7 +14,7 @@ def create_layout(
     app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame
 ) -> None:
     table_subgroups_df: pd.Dataframe = subgroups_df[
-        ["subgroup_str", "size_sg", "mean_sg"]
+        ["subgroup_str", "size_sg", "mean_sg", "class"]
     ].rename(
         columns={
             "subgroup_str": "Subgrupo",
@@ -30,7 +36,10 @@ def create_layout(
                 className="subgroups-datatable",
                 children=[
                     subgroups_table.render(
-                        app=app, table_subgroups_df=table_subgroups_df
+                        app=app,
+                        table_subgroups_df=table_subgroups_df[
+                            table_subgroups_df["class"] == 1
+                        ],
                     )
                 ],
             ),
@@ -39,7 +48,9 @@ def create_layout(
                 className="dropdown-container",
                 children=[
                     subgroups_dropdown.render(
-                        app=app, dataset_df=dataset_df, subgroups_df=subgroups_df
+                        app=app,
+                        dataset_df=dataset_df,
+                        subgroups_df=subgroups_df[subgroups_df["class"] == 1],
                     ),
                     subgroup_plot.render(
                         app=app,
@@ -52,8 +63,8 @@ def create_layout(
                 ],
             ),
             html.Div(
-                className="dendrogram-plot",
-                children=[],
+                className="venn-diagram-plot",
+                children=[venn_diagram_plot.render(app=app, rules_df=subgroups_df)],
             ),
         ],
     )

@@ -4,18 +4,17 @@ import pysubgroup as ps
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-plt.switch_backend("agg")
 from itertools import combinations
 from collections import namedtuple
 from collections.abc import Iterable
 from scipy.cluster.hierarchy import dendrogram
 from scipy.spatial import distance
-from sklearn import datasets
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.ensemble import RandomForestClassifier
 from tqdm import tqdm
 from venn import venn
 import plotly.express as px
+import plotly.graph_objects as go
 
 
 def boxplot(errors_df: pd.DataFrame, target_names: list[str]) -> None:
@@ -190,138 +189,16 @@ def latex_table(df_dict: dict, model: str) -> None:
     )
 
 
-# Plot a 2D scatterplot showing the samples, its classes, and the subgroups passed as parameters
-# to the function
-def plot_subgroups(
-    data: pd.DataFrame,
-    x_column: str,
-    y_column: str,
-    target: Iterable,
-    subgroups: pd.DataFrame,
-    ax=None,
-):
-    if ax is None:
-        ax = plt.gca()
-
-    sns.scatterplot(
-        data=data, x=x_column, y=y_column, hue=target, s=20, alpha=0.5, ax=ax
-    )
-
-    # if subgroup is None, plot only the data
-    if subgroups is None:
-        return ax.get_figure()
-
-    # Rectangle displacement, estimated from my head
-    delta = 0.02
-    for subgroup in subgroups.itertuples(index=False):
-        # extract the subgroup limits
-        rules = subgroup.subgroup.selectors
-        if len(rules) < 2:
-            rule = rules[0]
-            if isinstance(rule, ps.IntervalSelector):
-                rule1_upperbound = rule.upper_bound
-                rule1_lowerbound = rule.lower_bound
-                rule1_attribute = rule.attribute_name
-                if rule1_lowerbound == float("-inf"):
-                    rule1_lowerbound = data[rule1_attribute].min()
-                if rule1_upperbound == float("inf"):
-                    rule1_upperbound = data[rule1_attribute].max()
-            if rule1_attribute == x_column:
-                rule2_attribute = y_column
-            else:
-                rule2_attribute = x_column
-            rule2_lowerbound = data[rule2_attribute].min()
-            rule2_upperbound = data[rule2_attribute].max()
-        else:
-            rule1, rule2 = subgroup.subgroup.selectors
-            if isinstance(rule1, ps.IntervalSelector):
-                rule1_upperbound = rule1.upper_bound
-                rule1_lowerbound = rule1.lower_bound
-                rule1_attribute = rule1.attribute_name
-                if rule1_lowerbound == float("-inf"):
-                    rule1_lowerbound = data[rule1_attribute].min()
-                if rule1_upperbound == float("inf"):
-                    rule1_upperbound = data[rule1_attribute].max()
-            else:
-                raise (
-                    NotImplementedError("I still can't deal with non numeric features!")
-                )
-            if isinstance(rule2, ps.IntervalSelector):
-                rule2_upperbound = rule2.upper_bound
-                rule2_lowerbound = rule2.lower_bound
-                rule2_attribute = rule2.attribute_name
-                if rule2_lowerbound == float("-inf"):
-                    rule2_lowerbound = data[rule2_attribute].min()
-                if rule2_upperbound == float("inf"):
-                    rule2_upperbound = data[rule2_attribute].max()
-            else:
-                raise (
-                    NotImplementedError("I still can't deal with non numeric features!")
-                )
-        # draw a red or green rectangle around the region of interest
-        if subgroup.mean_sg > subgroup.mean_dataset:
-            color = "red"
-        else:
-            color = "green"
-        if rule1_attribute == x_column:
-            ax.add_patch(
-                plt.Rectangle(
-                    (rule1_lowerbound - delta, rule2_lowerbound - delta),
-                    width=rule1_upperbound - rule1_lowerbound + 2 * delta,
-                    height=rule2_upperbound - rule2_lowerbound + 2 * delta,
-                    fill=False,
-                    edgecolor=color,
-                    linewidth=1,
-                )
-            )
-            ax.text(
-                rule1_lowerbound,
-                rule2_lowerbound,
-                round(subgroup.mean_sg, 4),
-                fontsize=8,
-            )
-            ax.text(
-                rule1_upperbound,
-                rule2_upperbound,
-                round(subgroup.mean_dataset, 4),
-                fontsize=8,
-            )
-        else:
-            ax.add_patch(
-                plt.Rectangle(
-                    (rule2_lowerbound - delta, rule1_lowerbound - delta),
-                    width=rule2_upperbound - rule2_lowerbound + 2 * delta,
-                    height=rule1_upperbound - rule1_lowerbound + 2 * delta,
-                    fill=False,
-                    edgecolor=color,
-                    linewidth=1,
-                )
-            )
-            ax.text(
-                rule2_lowerbound,
-                rule1_lowerbound,
-                round(subgroup.mean_sg, 4),
-                fontsize=8,
-            )
-            ax.text(
-                rule2_upperbound,
-                rule1_upperbound,
-                round(subgroup.mean_dataset, 4),
-                fontsize=8,
-            )
-    return ax.get_figure()
-
-
+# Plot a Venn Diagram to compare which subgroups were identified as hard or easy for each of the models
 def venn_diagram(df_regras: pd.DataFrame) -> None:
-    # Plot a Venn Diagram to compare which subgroups were identified as hard or easy for each of the models
     set_list = []
     set_dict = {}
     for classe in df_regras["class"].unique():
         set_list.append(set(df_regras.loc[df_regras["class"] == classe, "subgroup"]))
         set_dict[classe] = set(df_regras.loc[df_regras["class"] == classe, "subgroup"])
 
-    venn(set_dict)
-    plt.show()
+    fig = go.Figure(go.Venn3(x=set_dict[0], y=set_dict[1], z=set_dict[2]))
+    return fig
 
 
 def remove_redundant_subgroups(df_dict):
@@ -369,6 +246,8 @@ def remove_redundant_subgroups(df_dict):
     return df_regras
 
 
+# Plot a 2D scatterplot showing the samples, its classes, and the subgroups passed as parameters
+# to the functio
 def plot_subgroups_px(
     data: pd.DataFrame,
     x_column: str,
@@ -509,7 +388,11 @@ def sets_jaccard(set1, set2):
 
 def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
     set_dict = {}
-    print(df_regras["class"].unique())
+
+    df_regras = df_regras.replace(
+        {"class": {0: "setosa", 1: "versicolor", 2: "virginica"}}
+    )
+
     for classe in df_regras["class"].unique():
         set_dict[classe] = set(df_regras.loc[df_regras["class"] == classe, "subgroup"])
     regras_interesse = (
@@ -546,9 +429,9 @@ def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
     ac.fit(normal_matrix)
 
     # create the counts of samples under each node
-    counts = np.zeros(model.children_.shape[0])
-    n_samples = len(model.labels_)
-    for i, merge in enumerate(model.children_):
+    counts = np.zeros(ac.children_.shape[0])
+    n_samples = len(ac.labels_)
+    for i, merge in enumerate(ac.children_):
         current_count = 0
         for child_idx in merge:
             if child_idx < n_samples:
@@ -557,9 +440,9 @@ def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
                 current_count += counts[child_idx - n_samples]
         counts[i] = current_count
 
-    linkage_matrix = np.column_stack(
-        [model.children_, model.distances_, counts]
-    ).astype(float)
+    linkage_matrix = np.column_stack([ac.children_, ac.distances_, counts]).astype(
+        float
+    )
 
     # Plot the corresponding dendrogram
     dendrogram(linkage_matrix, **kwargs)

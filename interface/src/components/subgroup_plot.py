@@ -5,8 +5,7 @@ from . import ids
 import sys
 
 sys.path.append("..")
-from functions import plot_subgroups, plot_subgroups_px
-
+from functions import plot_subgroups_px
 
 def render(
     app: Dash,
