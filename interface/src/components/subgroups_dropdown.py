@@ -28,22 +28,23 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
                 df_rows, ["subgroup", "mean_sg", "mean_dataset"]
             ],
         )
-        
 
     return html.Div(
+        className="subgroups-dropdown",
         children=[
-            html.H6("Subgrupos", style={"textAlign": "center"}),
             dcc.Dropdown(
                 id=ids.SUBGROUPS_DROPDOWN_ID,
                 options=[{"label": rule, "value": rule} for rule in all_subgroups],
                 value=[],
                 multi=True,
+                placeholder="Select a subgroup",
             ),
             html.Button(
                 className="dropdown-button",
                 children=["Plot subgroups"],
                 id=ids.PLOT_SUBGROUPS_BUTTON_ID,
-                n_clicks=0
+                n_clicks=0,
+                style={"width": "auto", "align": "center"},
             ),
-        ]
+        ],
     )

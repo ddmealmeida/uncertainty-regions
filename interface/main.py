@@ -28,7 +28,8 @@ def main() -> None:
     for cls in range(3):
         df_dict[str(cls)]["subgroup_str"] = df_dict[str(cls)].subgroup.astype(str)
 
-    app = Dash(external_stylesheets=[BOOTSTRAP])
+    # app = Dash(external_stylesheets=[BOOTSTRAP])
+    app = Dash()
     app.title = "Uncertainty Regions"
     app.layout = create_layout(
         app=app,

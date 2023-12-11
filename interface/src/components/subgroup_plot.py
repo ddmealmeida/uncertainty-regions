@@ -2,11 +2,7 @@ from dash import html, Dash, dcc
 import pandas as pd
 from collections.abc import Iterable
 from . import ids
-from plotly.tools import mpl_to_plotly
-from io import BytesIO
-import base64
 import sys
-import plotly.express as px
 
 sys.path.append("..")
 from functions import plot_subgroups, plot_subgroups_px
@@ -19,7 +15,7 @@ def render(
     y_column: str,
     target: Iterable,
     subgroups: pd.DataFrame,
-) -> None:
+) -> html.Div:
     fig = plot_subgroups_px(
         data=dataset_df,
         x_column=x_column,
@@ -30,7 +26,11 @@ def render(
     # First plot should create html.Div with no plot
     if subgroups is None:
         return html.Div(
-            [html.H4("Subgroups"), dcc.Graph(id=ids.SUBGROUPS_PLOT_ID)]
+            className="subgroups-2d-plot",
+            children=[
+                html.H4("Subgroups 2D plot", style={"textAlign": "center"}),
+                dcc.Graph(id=ids.SUBGROUPS_PLOT_ID),
+            ],
         )
 
     # Every subsequent render call should just return the figure to update the plot

@@ -496,3 +496,70 @@ def plot_subgroups_px(
                 yanchor="bottom",
             )
     return fig
+
+
+# Pre-calculating the Jaccard Index
+def boolean_jaccard(set1, set2):
+    return sum(set1 & set2) / sum(set1 | set2)
+
+
+def sets_jaccard(set1, set2):
+    return len(set1.intersection(set2)) / len(set1.union(set2))
+
+
+def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
+    set_dict = {}
+    print(df_regras["class"].unique())
+    for classe in df_regras["class"].unique():
+        set_dict[classe] = set(df_regras.loc[df_regras["class"] == classe, "subgroup"])
+    regras_interesse = (
+        set_dict["versicolor"].union(set_dict["virginica"]) - set_dict["setosa"]
+    )
+    df_interesse = df_regras.loc[
+        df_regras["subgroup"].isin(regras_interesse), ["subgroup", "covered"]
+    ]
+    df_interesse.drop_duplicates(subset="subgroup", inplace=True)
+    # Create linkage matrix and then plot the dendrogram
+
+    jaccard_generator1 = (
+        1 - boolean_jaccard(row1, row2)
+        for row1, row2 in combinations(df_interesse["covered"], r=2)
+    )
+    jaccard_generator2 = (
+        1 - sets_jaccard(set(row1.selectors), set(row2.selectors))
+        for row1, row2 in combinations(df_interesse["subgroup"], r=2)
+    )
+    flattened_matrix1 = np.fromiter(jaccard_generator1, dtype=np.float64)
+    flattened_matrix2 = np.fromiter(jaccard_generator2, dtype=np.float64)
+    flattened_matrix = np.minimum(flattened_matrix1, flattened_matrix2)
+
+    # since flattened_matrix is the flattened upper triangle of the matrix
+    # we need to expand it.
+    normal_matrix = distance.squareform(flattened_matrix)
+    # replacing zeros with ones at the diagonal.
+    # normal_matrix += np.identity(len(df_interesse['covered']))
+
+    # setting distance_threshold=0 ensures we compute the full tree.
+    ac = AgglomerativeClustering(
+        distance_threshold=0, n_clusters=None, affinity="precomputed", linkage="average"
+    )
+    ac.fit(normal_matrix)
+
+    # create the counts of samples under each node
+    counts = np.zeros(model.children_.shape[0])
+    n_samples = len(model.labels_)
+    for i, merge in enumerate(model.children_):
+        current_count = 0
+        for child_idx in merge:
+            if child_idx < n_samples:
+                current_count += 1  # leaf node
+            else:
+                current_count += counts[child_idx - n_samples]
+        counts[i] = current_count
+
+    linkage_matrix = np.column_stack(
+        [model.children_, model.distances_, counts]
+    ).astype(float)
+
+    # Plot the corresponding dendrogram
+    dendrogram(linkage_matrix, **kwargs)
