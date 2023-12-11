@@ -15,6 +15,8 @@ from tqdm import tqdm
 from venn import venn
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.figure_factory as ff
+from functools import partial
 
 
 def boxplot(errors_df: pd.DataFrame, target_names: list[str]) -> None:
@@ -197,12 +199,11 @@ def venn_diagram(df_regras: pd.DataFrame) -> None:
         set_list.append(set(df_regras.loc[df_regras["class"] == classe, "subgroup"]))
         set_dict[classe] = set(df_regras.loc[df_regras["class"] == classe, "subgroup"])
 
-    fig = go.Figure(go.Venn3(x=set_dict[0], y=set_dict[1], z=set_dict[2]))
-    return fig
+    fig = go.Figure(go.Venn3(x=set_dict[0], y=set_dict[1]))
 
 
+# Reducing the redundancy in the subgroups mined, by unifying the names of equal coverage subgroup descriptions
 def remove_redundant_subgroups(df_dict):
-    # Reducing the redundancy in the subgroups mined, by unifying the names of equal coverage subgroup descriptions
     df_regras = pd.concat(df_dict, ignore_index=True)
     lista_regras = []
     lista_intersecoes = []
@@ -237,10 +238,16 @@ def remove_redundant_subgroups(df_dict):
             else:
                 mapa_regras[r] = primeira_regra
 
-    df_regras = df_regras.replace(
+    """ df_regras = df_regras.replace(
         {
             "subgroup": mapa_regras,
             "class": {0: "setosa", 1: "versicolor", 2: "virginica"},
+        }
+    ) """
+
+    df_regras = df_regras.replace(
+        {
+            "subgroup": mapa_regras,
         }
     )
     return df_regras
@@ -386,7 +393,7 @@ def sets_jaccard(set1, set2):
     return len(set1.intersection(set2)) / len(set1.union(set2))
 
 
-def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
+def plot_dendrogram(df_regras: pd.DataFrame):
     set_dict = {}
 
     df_regras = df_regras.replace(
@@ -424,7 +431,7 @@ def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
 
     # setting distance_threshold=0 ensures we compute the full tree.
     ac = AgglomerativeClustering(
-        distance_threshold=0, n_clusters=None, affinity="precomputed", linkage="average"
+        distance_threshold=0, n_clusters=None, metric="precomputed", linkage="average"
     )
     ac.fit(normal_matrix)
 
@@ -444,5 +451,32 @@ def plot_dendrogram(df_regras: pd.DataFrame, **kwargs):
         float
     )
 
+    # Make the feature names shorter for the visualization
+    df_interesse.loc[:, "subgroup"] = df_interesse["subgroup"].apply(
+        lambda x: x.__str__().replace("sepal width (cm)", "sw")
+    )
+    df_interesse.loc[:, "subgroup"] = df_interesse["subgroup"].apply(
+        lambda x: x.__str__().replace("sepal length (cm)", "sl")
+    )
+    df_interesse.loc[:, "subgroup"] = df_interesse["subgroup"].apply(
+        lambda x: x.__str__().replace("petal width (cm)", "pw")
+    )
+    df_interesse.loc[:, "subgroup"] = df_interesse["subgroup"].apply(
+        lambda x: x.__str__().replace("petal length (cm)", "pl")
+    )
+
     # Plot the corresponding dendrogram
-    dendrogram(linkage_matrix, **kwargs)
+
+    # VER COM DANIEL QUESTÃO DA LINKAGE MATRIX
+    fig = ff.create_dendrogram(
+        X=normal_matrix,
+        orientation="right",
+        labels=df_interesse.subgroup.tolist(),
+        linkagefun=lambda _: linkage_matrix
+    )
+
+    # 1800 width fitted well on my screen, but it should be more dynamic
+    fig.update_layout(width=1800, height=600, yaxis={"side": "right"})
+    fig.update_xaxes(range=[-1, -0.45])
+
+    return fig

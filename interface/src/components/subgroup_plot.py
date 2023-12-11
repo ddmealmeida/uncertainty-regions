@@ -27,7 +27,7 @@ def render(
         return html.Div(
             className="subgroups-2d-plot",
             children=[
-                html.H4("Subgroups 2D plot", style={"textAlign": "center"}),
+                html.H3("Subgroups 2D plot", style={"textAlign": "center"}),
                 dcc.Graph(id=ids.SUBGROUPS_PLOT_ID, figure=fig),
             ],
         )

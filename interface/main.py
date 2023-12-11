@@ -23,7 +23,9 @@ def main() -> None:
     df_dict: dict = subgroup_discovery(
         dataset_df=dataset_df, errors_df=errors_df, number_of_classes=3
     )
-    subgroups_df = pd.concat(df_dict, ignore_index=True)
+    
+    # subgroups_df = pd.concat(df_dict, ignore_index=True)
+    subgroups_df = remove_redundant_subgroups(df_dict=df_dict)
 
     # adding string column with rules
     subgroups_df["subgroup_str"] = subgroups_df.subgroup.astype(str)
@@ -47,9 +49,7 @@ def main() -> None:
     # print(df_dict["1"]["subgroup"].iloc[0].selectors[0].attribute_name)
 
     app.layout = create_layout(
-        app=app,
-        dataset_df=dataset_df,
-        subgroups_df=subgroups_df
+        app=app, dataset_df=dataset_df, subgroups_df=subgroups_df
     )
 
     app.run(debug=True)

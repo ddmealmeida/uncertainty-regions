@@ -13,19 +13,21 @@ import pandas as pd
 def create_layout(
     app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame
 ) -> None:
-    table_subgroups_df: pd.Dataframe = subgroups_df[
-        ["subgroup_str", "size_sg", "mean_sg", "class"]
+    table_subgroups_df: pd.Dataframe = subgroups_df[subgroups_df["class"] == 1][
+        ["subgroup_str", "size_sg", "mean_sg", "quality"]
     ].rename(
         columns={
             "subgroup_str": "Subgrupo",
             "size_sg": "Tamanho",
             "mean_sg": "Erro médio do subgrupo",
+            "quality": "Qualidade",
         }
     )
-    # rounding mean_sg (Erro médio do subgrupo) to 3 decimal cases
+    # rounding mean_sg (Erro médio do subgrupo)  and quality (Qualidade) to 3 decimal cases
     table_subgroups_df["Erro médio do subgrupo"] = table_subgroups_df[
         "Erro médio do subgrupo"
     ].round(3)
+    table_subgroups_df["Qualidade"] = table_subgroups_df["Qualidade"]
 
     return html.Div(
         id=ids.MAIN_LAYOUT_ID,
@@ -37,9 +39,7 @@ def create_layout(
                 children=[
                     subgroups_table.render(
                         app=app,
-                        table_subgroups_df=table_subgroups_df[
-                            table_subgroups_df["class"] == 1
-                        ],
+                        table_subgroups_df=table_subgroups_df,
                     )
                 ],
             ),
@@ -63,8 +63,8 @@ def create_layout(
                 ],
             ),
             html.Div(
-                className="venn-diagram-plot",
-                children=[venn_diagram_plot.render(app=app, rules_df=subgroups_df)],
+                className="dendogram-plot",
+                children=[dendrogram_plot.render(app=app, subgroups_df=subgroups_df)],
             ),
         ],
     )
