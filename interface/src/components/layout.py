@@ -13,7 +13,7 @@ import pandas as pd
 def create_layout(
     app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame
 ) -> None:
-    table_subgroups_df: pd.Dataframe = subgroups_df[subgroups_df["class"] == 1][
+    table_subgroups_df: pd.Dataframe = subgroups_df[subgroups_df["class"] == 0][
         ["subgroup_str", "size_sg", "mean_sg", "quality"]
     ].rename(
         columns={
@@ -27,7 +27,7 @@ def create_layout(
     table_subgroups_df["Erro médio do subgrupo"] = table_subgroups_df[
         "Erro médio do subgrupo"
     ].round(3)
-    table_subgroups_df["Qualidade"] = table_subgroups_df["Qualidade"]
+    table_subgroups_df["Qualidade"] = table_subgroups_df["Qualidade"].round(3)
 
     return html.Div(
         id=ids.MAIN_LAYOUT_ID,
@@ -50,7 +50,7 @@ def create_layout(
                     subgroups_dropdown.render(
                         app=app,
                         dataset_df=dataset_df,
-                        subgroups_df=subgroups_df[subgroups_df["class"] == 1],
+                        subgroups_df=subgroups_df[subgroups_df["class"] == 0],
                     ),
                     subgroup_plot.render(
                         app=app,

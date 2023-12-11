@@ -324,7 +324,7 @@ def plot_subgroups_px(
             color = "green"
         if rule1_attribute == x_column:
             x0 = rule1_lowerbound - delta
-            y0 = rule2_upperbound - delta
+            y0 = rule2_lowerbound - delta
             width = rule1_upperbound - rule1_lowerbound + 2 * delta
             height = rule2_upperbound - rule2_lowerbound + 2 * delta
             fig.add_shape(
@@ -354,7 +354,7 @@ def plot_subgroups_px(
             )
         else:
             x0 = rule2_lowerbound - delta
-            y0 = rule1_upperbound - delta
+            y0 = rule1_lowerbound - delta
             width = rule2_upperbound - rule2_lowerbound + 2 * delta
             height = rule1_upperbound - rule1_lowerbound + 2 * delta
             fig.add_shape(
@@ -476,7 +476,7 @@ def plot_dendrogram(df_regras: pd.DataFrame):
     )
 
     # 1800 width fitted well on my screen, but it should be more dynamic
-    fig.update_layout(width=1800, height=600, yaxis={"side": "right"})
+    fig.update_layout(width=1000, height=600, yaxis={"side": "right"})
     fig.update_xaxes(range=[-1, -0.45])
 
     return fig

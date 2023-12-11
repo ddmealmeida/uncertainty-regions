@@ -7,6 +7,7 @@ import sys
 sys.path.append("..")
 from functions import plot_subgroups_px
 
+
 def render(
     app: Dash,
     dataset_df: pd.DataFrame,
@@ -28,7 +29,9 @@ def render(
             className="subgroups-2d-plot",
             children=[
                 html.H3("Subgroups 2D plot", style={"textAlign": "center"}),
-                dcc.Graph(id=ids.SUBGROUPS_PLOT_ID, figure=fig),
+                dcc.Graph(
+                    id=ids.SUBGROUPS_PLOT_ID, figure=fig, style={"textAlign": "center"}
+                ),
             ],
         )
 

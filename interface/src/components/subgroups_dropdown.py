@@ -13,19 +13,32 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
         State(ids.SUBGROUPS_DROPDOWN_ID, "value"),
     )
     def plot_subgroups(n_clicks: int, selected_subgroups: list[str]) -> html.Div:
+        # prevents first update, i.e., should only update on the click of the button
         if n_clicks is None:
             raise exceptions.PreventUpdate
 
+        # if selected subgroups is empty we do nothing on the press of the button
+        if len(selected_subgroups) == 0:
+            raise exceptions.PreventUpdate
         df_rows: list[int] = []
         for subgroup in selected_subgroups:
             df_rows.append(
                 subgroups_df.index[subgroups_df.subgroup_str == subgroup].tolist()[0]
             )
+
+        # we assume the selected subgroup is of size 2, and we arbitrarily use the first one as x_axis and second one as y_axis of 2d plot
+
+        first_subgroup = subgroups_df[
+            subgroups_df["subgroup_str"] == selected_subgroups[0]
+        ]
+        x_column = first_subgroup.x_column.iloc[0]
+        y_column = first_subgroup.y_column.iloc[0]
+
         return subgroup_plot.render(
             app=app,
             dataset_df=dataset_df,
-            x_column="petal width (cm)",
-            y_column="petal length (cm)",
+            x_column=x_column,
+            y_column=y_column,
             target=dataset_df.target.tolist(),
             subgroups=subgroups_df.loc[
                 df_rows, ["subgroup", "mean_sg", "mean_dataset"]
