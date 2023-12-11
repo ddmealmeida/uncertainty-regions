@@ -161,7 +161,7 @@ def subgroup_discovery(
         df_regras["covered"] = df_regras["subgroup"].apply(lambda x: x.covers(X_sd))
         df_regras["class"] = class_of_interest
         df_dict[str(class_of_interest)] = df_regras.copy()
-    dataset_df.target = target
+    dataset_df["target"] = target
     return df_dict
 
 

@@ -29,7 +29,7 @@ def render(
             className="subgroups-2d-plot",
             children=[
                 html.H4("Subgroups 2D plot", style={"textAlign": "center"}),
-                dcc.Graph(id=ids.SUBGROUPS_PLOT_ID),
+                dcc.Graph(id=ids.SUBGROUPS_PLOT_ID, figure=fig),
             ],
         )
 

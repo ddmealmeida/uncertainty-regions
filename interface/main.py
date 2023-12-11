@@ -28,14 +28,39 @@ def main() -> None:
     for cls in range(3):
         df_dict[str(cls)]["subgroup_str"] = df_dict[str(cls)].subgroup.astype(str)
 
+    # adding two extra columns for each coordinate of each rule. If rule contain only one coordinate, second column will be null
+    for cls in range(3):
+        df_dict[str(cls)]["x_column"] = ""
+        df_dict[str(cls)]["y_column"] = ""
+
+
+        for idx, subgroup in enumerate(df_dict[str(cls)].subgroup):
+            rules = subgroup.selectors
+            if len(rules) < 2:
+                df_dict[str(cls)].loc[:, "x_column"].at[idx] = rules[0].attribute_name
+            else:
+                df_dict[str(cls)].loc[:, "x_column"].at[idx] = rules[0].attribute_name
+                df_dict[str(cls)].loc[:, "y_column"].at[idx] = rules[1].attribute_name
+
     # app = Dash(external_stylesheets=[BOOTSTRAP])
     app = Dash()
     app.title = "Uncertainty Regions"
+
+    # print(df_dict["1"]["subgroup"].iloc[0].selectors[0].attribute_name)
+
     app.layout = create_layout(
         app=app,
         dataset_df=dataset_df,
         subgroups_df=df_dict["1"][
-            ["subgroup", "subgroup_str", "size_sg", "mean_sg", "mean_dataset"]
+            [
+                "subgroup",
+                "subgroup_str",
+                "size_sg",
+                "mean_sg",
+                "mean_dataset",
+                "x_column",
+                "y_column",
+            ]
         ],
     )
 

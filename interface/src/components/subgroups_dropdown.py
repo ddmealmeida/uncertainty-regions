@@ -1,4 +1,4 @@
-from dash import Dash, html, dcc, Input, Output, State
+from dash import Dash, html, dcc, Input, Output, State, exceptions
 import pandas as pd
 from . import ids
 from . import subgroup_plot
@@ -12,7 +12,10 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
         Input(ids.PLOT_SUBGROUPS_BUTTON_ID, "n_clicks"),
         State(ids.SUBGROUPS_DROPDOWN_ID, "value"),
     )
-    def plot_subgroups(_: int, selected_subgroups: list[str]) -> html.Div:
+    def plot_subgroups(n_clicks: int, selected_subgroups: list[str]) -> html.Div:
+        if n_clicks is None:
+            raise exceptions.PreventUpdate
+
         df_rows: list[int] = []
         for subgroup in selected_subgroups:
             df_rows.append(
@@ -29,6 +32,40 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
             ],
         )
 
+    @app.callback(
+        Output(ids.SUBGROUPS_DROPDOWN_ID, "options"),
+        Input(ids.SUBGROUPS_DROPDOWN_ID, "value"),
+    )
+    def filter_subgroups(selected_subgroups: list[str]) -> list[str]:
+        if len(selected_subgroups) == 0:
+            return all_subgroups
+
+        if len(selected_subgroups) > 1:
+            raise exceptions.PreventUpdate
+
+        # get first cause it is the only one
+        first_subgroup = subgroups_df[
+            subgroups_df["subgroup_str"] == selected_subgroups[0]
+        ]
+
+        # case where only one dimension defines rule
+        if first_subgroup.y_column.iloc[0] == "":
+            return subgroups_df[
+                (subgroups_df.x_column == first_subgroup.x_column.iloc[0])
+                ^ (subgroups_df.y_column == first_subgroup.x_column.iloc[0])
+            ].subgroup_str.tolist()
+        else:
+            return subgroups_df[
+                (
+                    (subgroups_df.x_column == first_subgroup.x_column.iloc[0])
+                    & (subgroups_df.y_column == first_subgroup.y_column.iloc[0])
+                )
+                ^ (
+                    (subgroups_df.x_column == first_subgroup.y_column.iloc[0])
+                    & (subgroups_df.y_column == first_subgroup.x_column.iloc[0])
+                )
+            ].subgroup_str.tolist()
+
     return html.Div(
         className="subgroups-dropdown",
         children=[
@@ -43,7 +80,6 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
                 className="dropdown-button",
                 children=["Plot subgroups"],
                 id=ids.PLOT_SUBGROUPS_BUTTON_ID,
-                n_clicks=0,
                 style={"width": "auto", "align": "center"},
             ),
         ],
