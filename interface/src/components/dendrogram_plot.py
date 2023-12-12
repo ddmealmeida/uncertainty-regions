@@ -12,7 +12,7 @@ def render(app: Dash, subgroups_df: pd.DataFrame) -> html.Div:
     return html.Div(
         className="dendogram-plot",
         children=[
-            html.H3("Hierarchical Clustering Dendogram", style={"textAlign": "center"}),
+            html.H3("Hierarchical Clustering Dendrogram", style={"textAlign": "center"}),
             dcc.Graph(
                 id=ids.DENDOGRAM_PLOT_ID,
                 figure=plot_dendrogram(df_regras=subgroups_df),
