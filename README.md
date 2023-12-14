@@ -15,3 +15,4 @@ Repository for a tool that identifies the regions with most and least uncertaint
 - Venn diagram doesn't have a builtin method inside plotly. Use some kinf of conversion from matplotlib
 - Refactor code: create more files to abstract function and change variable names to better ones
 - Dendrogram: plot only rules from a certain model, choose from options in a selection
+- Dendrograma antes de plot 2d

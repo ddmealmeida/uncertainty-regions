@@ -31,6 +31,7 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
         first_subgroup = subgroups_df[
             subgroups_df["subgroup_str"] == selected_subgroups[0]
         ]
+
         x_column = first_subgroup.x_column.iloc[0]
         y_column = first_subgroup.y_column.iloc[0]
 
@@ -88,12 +89,17 @@ def render(app: Dash, dataset_df: pd.DataFrame, subgroups_df: pd.DataFrame) -> h
                 value=[],
                 multi=True,
                 placeholder="Select a subgroup",
+                style={"margin": "auto"},
             ),
             html.Button(
                 className="dropdown-button",
                 children=["Plot subgroups"],
                 id=ids.PLOT_SUBGROUPS_BUTTON_ID,
-                style={"width": "auto", "align": "center"},
+                style={
+                    "text-align": "center",
+                    "display": "inline-block",
+                    "position": "relative"
+                },
             ),
         ],
     )

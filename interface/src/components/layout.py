@@ -26,8 +26,8 @@ def create_layout(
     # rounding mean_sg (Erro médio do subgrupo)  and quality (Qualidade) to 3 decimal cases
     table_subgroups_df["Erro médio do subgrupo"] = table_subgroups_df[
         "Erro médio do subgrupo"
-    ].round(3)
-    table_subgroups_df["Qualidade"] = table_subgroups_df["Qualidade"].round(3)
+    ].round(4)
+    table_subgroups_df["Qualidade"] = table_subgroups_df["Qualidade"].round(4)
 
     return html.Div(
         id=ids.MAIN_LAYOUT_ID,

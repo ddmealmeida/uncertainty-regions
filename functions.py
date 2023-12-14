@@ -261,8 +261,10 @@ def plot_subgroups_px(
     y_column: str,
     target: Iterable,
     subgroups: pd.DataFrame,
-):
-    fig = px.scatter(data, x=x_column, y=y_column, color=[str(x) for x in target])
+):  
+    
+    classes = map(lambda x : "setosa" if x == 0 else "versicolor" if x == 1 else "virginica", target)
+    fig = px.scatter(data, x=x_column, y=y_column, color=[str(x) for x in classes])
 
     # if subgroup is None, plot only the data
     if subgroups is None:
@@ -472,7 +474,8 @@ def plot_dendrogram(df_regras: pd.DataFrame):
         X=normal_matrix,
         orientation="right",
         labels=df_interesse.subgroup.tolist(),
-        linkagefun=lambda _: linkage_matrix
+        linkagefun=lambda _: linkage_matrix,
+        
     )
 
     # 1800 width fitted well on my screen, but it should be more dynamic
