@@ -167,7 +167,7 @@ for class_of_interest in range(3):
         searchspace,
         result_set_size=20,
         depth=2,
-        qf=ps.StandardQFNumeric(a=0.5))
+        qf=ps.StandardQFNumeric(a=0.3))
     print('Mining relevant subgroups...')
     result = ps.BeamSearch().execute(task=task)
     df_subgroup = result.to_dataframe()
@@ -223,7 +223,7 @@ for target_class, df in df_dict.items():
     plt.show()
 
     # Set the distance threshold used for filtering the redundant subgroups
-    distance_threshold = 0.25
+    distance_threshold = 0.4
     n_samples = len(ac.labels_)
     dict_nodes = {}  # Save the representative subgroup for each merge
     subgroup_replacements = {}  # Save the original and substitute subgroups
@@ -261,9 +261,9 @@ df_subgroup = df_subgroup.replace({'class': {0: 'setosa',
 # Plot the subgroups in a 2d scatterplot
 plt.figure()
 plot_subgroups(pd.DataFrame(X, columns=iris.feature_names),
-               'petal width (cm)', 'petal length (cm)',
+               'sepal width (cm)', 'petal length (cm)',
                [iris.target_names[x] for x in y_multi],
-               df_subgroup.loc[[6, 18, 25], ['subgroup', 'mean_sg', 'mean_dataset']])
+               df_subgroup.loc[[0, 5], ['subgroup', 'mean_sg', 'mean_dataset']])
 plt.show()
 
 # Plot a Venn Diagram to compare which subgroups were identified as hard or easy for each of the models
