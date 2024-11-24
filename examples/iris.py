@@ -10,6 +10,7 @@ from scipy.spatial import distance
 from sklearn import datasets
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from venn import venn
 
 
@@ -115,14 +116,14 @@ def plot_subgroups(data: pd.DataFrame,
                                        height=rule2_upperbound - rule2_lowerbound + 2*delta,
                                        fill=False, edgecolor=color, linewidth=1))
             ax.text(rule1_lowerbound, rule2_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
-            ax.text(rule1_upperbound, rule2_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
+            # ax.text(rule1_upperbound, rule2_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
         else:
             ax.add_patch(plt.Rectangle((rule2_lowerbound - delta, rule1_lowerbound - delta),
                                        width=rule2_upperbound - rule2_lowerbound + 2*delta,
                                        height=rule1_upperbound - rule1_lowerbound + 2*delta,
                                        fill=False, edgecolor=color, linewidth=1))
             ax.text(rule2_lowerbound, rule1_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
-            ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
+            # ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
     return ax
 
 
@@ -136,7 +137,7 @@ errors_df = pd.DataFrame()
 for c in range(3):
     # build a binary classifier to identify each class
     y = (y_multi == c).astype(int)
-    rf = RandomForestClassifier(random_state=57)
+    rf = LogisticRegression(random_state=57)
     rf.fit(X, y)
     model_list.append(rf)
     y_prob = rf.predict_proba(X)[:, 1]
@@ -167,7 +168,7 @@ for class_of_interest in range(3):
         searchspace,
         result_set_size=20,
         depth=2,
-        qf=ps.StandardQFNumeric(a=0.3))
+        qf=ps.StandardQFNumeric(a=0.5))
     print('Mining relevant subgroups...')
     result = ps.BeamSearch().execute(task=task)
     df_subgroup = result.to_dataframe()
@@ -223,7 +224,7 @@ for target_class, df in df_dict.items():
     plt.show()
 
     # Set the distance threshold used for filtering the redundant subgroups
-    distance_threshold = 0.4
+    distance_threshold = 0.25
     n_samples = len(ac.labels_)
     dict_nodes = {}  # Save the representative subgroup for each merge
     subgroup_replacements = {}  # Save the original and substitute subgroups
@@ -261,9 +262,9 @@ df_subgroup = df_subgroup.replace({'class': {0: 'setosa',
 # Plot the subgroups in a 2d scatterplot
 plt.figure()
 plot_subgroups(pd.DataFrame(X, columns=iris.feature_names),
-               'sepal width (cm)', 'petal length (cm)',
+               'petal length (cm)', 'petal width (cm)',
                [iris.target_names[x] for x in y_multi],
-               df_subgroup.loc[[0, 5], ['subgroup', 'mean_sg', 'mean_dataset']])
+               df_subgroup.loc[[16, 20, 26, 29], ['subgroup', 'mean_sg', 'mean_dataset']])
 plt.show()
 
 # Plot a Venn Diagram to compare which subgroups were identified as hard or easy for each of the models
@@ -280,6 +281,6 @@ plt.show()
 set_dict = {}
 for classe in df_subgroup['class'].unique():
     set_dict[classe] = set(df_subgroup.loc[df_subgroup['class'] == classe, 'subgroup'])
-regras_interesse = set_dict['versicolor'].union(set_dict['virginica']) - set_dict['setosa']
+regras_interesse = set_dict['versicolor'].intersection(set_dict['virginica']) - set_dict['setosa']
 df_interesse = df_subgroup.loc[df_subgroup['subgroup'].isin(regras_interesse), ['subgroup', 'covered']]
 df_interesse.drop_duplicates(subset='subgroup', inplace=True)

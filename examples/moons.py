@@ -144,20 +144,11 @@ sns.scatterplot(data=plot_df, x='x1', y='x2', hue='predicted class', style='actu
 plt.tight_layout()
 plt.show()
 
-sns.scatterplot(x=X[:, 0], y=X[:, 1],
-                hue=['1' if c == 1 else '0' for c in y_pred],
-                style=['1' if c == 1 else '0' for c in y_pred],
-                legend='full')
-plt.show()
-
-plt.scatter(X[:, 0], X[:, 1], c=y_pred, marker=y)
-plt.show()
-
 # Run the subgroup discovery using Beam Search as the search algorithm, using the custom quality function
 # defined above
 X_sd = pd.DataFrame(np.concatenate([X, prediction_errors.reshape(-1, 1)],
                                    axis=1),
-                    columns=['a1', 'a2', 'errors'])
+                    columns=['x1', 'x2', 'errors'])
 
 num_target = ps.NumericTarget('errors')
 searchspace = ps.create_selectors(X_sd, ignore='errors')
@@ -249,8 +240,8 @@ plt.show()
 
 # Run the baseline (KMeans Clustering) and use the clusters as subgroups
 km = KMeans(n_clusters=df.shape[0], random_state=57)
-km.fit(X)
-cluster_attribution = km.predict(X)
+km.fit(X_sd)
+cluster_attribution = km.predict(X_sd)
 
 km_df = pd.DataFrame(np.concatenate((X_sd, cluster_attribution[:, np.newaxis]),
                                       axis=1),
@@ -258,11 +249,11 @@ km_df = pd.DataFrame(np.concatenate((X_sd, cluster_attribution[:, np.newaxis]),
 g_df = km_df.groupby('cluster')['error'].mean().reset_index().sort_values('error', ascending=False)
 
 # Plot the clusters for a better understanding
-plot_df = pd.DataFrame(np.concatenate((X, y[:, np.newaxis],
+plot_df = pd.DataFrame(np.concatenate((X, y_pred[:, np.newaxis],
                                        cluster_attribution[:, np.newaxis]),
                                       axis=1),
-                       columns=['x1', 'x2', 'actual class', 'cluster'])
-sns.scatterplot(data=plot_df, x='x1', y='x2', hue='cluster', style='actual class',
+                       columns=['x1', 'x2', 'predicted class', 'cluster'])
+sns.scatterplot(data=plot_df, x='x1', y='x2', hue='cluster', style='predicted class',
                 legend='full')
 plt.tight_layout()
 plt.show()
@@ -274,39 +265,57 @@ high_error = X_sd['errors'] >= 0.5
 # Checking how many were covered by each number of subgroups found
 coverage = np.full((len(X), ), False)
 cumulative_coverage = []
+cumulative_precision = []
 for n_subgroup in range(len(df)):
     coverage = coverage | df.iloc[n_subgroup]['covered']
     new_coverage = sum(coverage[high_error])/sum(high_error)
     cumulative_coverage.append(new_coverage)
+    new_precision = sum(coverage[high_error]) / sum(coverage)
+    cumulative_precision.append(new_precision)
     if new_coverage == 1:
         break
 
 # Checking how many were covered by each number of clusters found
 coverage_km = np.full((len(X), ), False)
 cumulative_coverage_km = []
+cumulative_precision_km = []
 for n_cluster in g_df['cluster']:
     coverage_km = coverage_km | (km_df['cluster'] == n_cluster)
     new_coverage_km = sum(coverage_km[high_error])/sum(high_error)
     cumulative_coverage_km.append(new_coverage_km)
+    new_precision_km = sum(coverage_km[high_error]) / sum(coverage_km)
+    cumulative_precision_km.append(new_precision_km)
     if new_coverage_km == 1:
         break
 
-df_plot = pd.DataFrame({"Number of Subgroups": chain(range(1, len(cumulative_coverage)+1),
-                                                     range(len(cumulative_coverage_km))),
+df_plot = pd.DataFrame({"Number of Groups": chain(range(1, len(cumulative_coverage) + 1),
+                                                     range(1, len(cumulative_coverage_km) + 1)),
                         "Coverage": np.concatenate((cumulative_coverage, cumulative_coverage_km)),
+                        "Precision": np.concatenate((cumulative_precision, cumulative_precision_km)),
                         "Strategy": ['Proposed Pipeline']*len(cumulative_coverage) +
                                     ['Baseline']*len(cumulative_coverage_km)})
 
+# Plot two line plots with the cumulative coverage and precision of the high error samples
+fig, axes = plt.subplots(2, 1, sharex='col')
+sns.lineplot(data=df_plot,
+             x="Number of Groups",
+             y="Coverage",
+             hue='Strategy',
+             ax=axes[0])
+axes[0].yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+
 # Plot a simple line plot with the number of subgroups needed to cover the high error samples
-ax = sns.lineplot(x=range(1, len(cumulative_coverage)+1), y=cumulative_coverage)
-ax.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
-plt.xlabel("Number of subgroups")
-plt.ylabel("Coverage")
-plt.title("Cumulative Coverage of High Error Samples")
-plt.show()
+sns.lineplot(data=df_plot,
+             x="Number of Groups",
+             y="Precision",
+             hue='Strategy',
+             ax=axes[1])
+axes[1].yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+axes[0].set_title("Cumulative Precision and Recall on High Error Samples")
+fig.show()
 
-
-# Ao invés de plotar o número de subgrupos pra atingir x% de cobertura, talvez seja melhor plotar o percentual total de amostras selecionadas X cobertura das de alto erro
+# Ao invés de plotar o número de subgrupos pra atingir x% de cobertura, talvez seja melhor plotar o percentual total de
+# amostras selecionadas X cobertura das de alto erro
 
 # Checking how many were covered by each number of subgroups found
 coverage = np.full((len(X), ), False)
@@ -332,13 +341,13 @@ for n_cluster in g_df['cluster']:
     # if new_coverage_km == 1:
     #     break
 
-df_plot = pd.DataFrame({"Percentage of Samples Selected": np.concatenate((total_coverage, total_coverage_km)),
+df_plot2 = pd.DataFrame({"Percentage of Samples Selected": np.concatenate((total_coverage, total_coverage_km)),
                         "High Error Samples Coverage": np.concatenate((cumulative_coverage, cumulative_coverage_km)),
                         "Strategy": ['Proposed Pipeline']*len(cumulative_coverage) +
                                     ['Baseline']*len(cumulative_coverage_km)})
 
 # Plot a simple line plot with the number of subgroups needed to cover the high error samples
-ax = sns.lineplot(data=df_plot,
+ax = sns.lineplot(data=df_plot2,
                   x="Percentage of Samples Selected",
                   y="High Error Samples Coverage",
                   hue='Strategy')
