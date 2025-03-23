@@ -63,8 +63,9 @@ def plot_subgroups(data: pd.DataFrame,
                     hue=target,
                     s=20, alpha=0.5, ax=ax)
     # Rectangle displacement, estimated from my head
-    delta = 0.02
+    mean_delta = 0.02
     for subgroup in subgroups.itertuples(index=False):
+        delta = mean_delta + np.random.random()/50
         # extract the subgroup limits
         rules = subgroup.subgroup.selectors
         if len(rules) < 2:
