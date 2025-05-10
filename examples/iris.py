@@ -1,131 +1,17 @@
 import numpy as np
 import pandas as pd
-import pysubgroup as ps
 import seaborn as sns
+import pysubgroup as ps
 import matplotlib.pyplot as plt
-from itertools import combinations
-from collections.abc import Iterable
-from scipy.cluster.hierarchy import dendrogram
-from scipy.spatial import distance
-from sklearn import datasets
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from venn import venn
+from sklearn import datasets
+from itertools import combinations
+from scipy.spatial import distance
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.linear_model import LogisticRegression
 
-
-def boolean_jaccard(set1, set2):
-    return sum(set1 & set2) / sum(set1 | set2)
-
-
-def sets_jaccard(set1, set2):
-    return len(set1.intersection(set2)) / len(set1.union(set2))
-
-
-def plot_dendrogram(model, **kwargs):
-    # Create linkage matrix and then plot the dendrogram
-
-    # create the counts of samples under each node
-    counts = np.zeros(model.children_.shape[0])
-    n_samples = len(model.labels_)
-    for i, merge in enumerate(model.children_):
-        current_count = 0
-        for child_idx in merge:
-            if child_idx < n_samples:
-                current_count += 1  # leaf node
-            else:
-                current_count += counts[child_idx - n_samples]
-        counts[i] = current_count
-
-    linkage_matrix = np.column_stack(
-        [model.children_, model.distances_, counts]
-    ).astype(float)
-
-    # Plot the corresponding dendrogram
-    dendrogram(linkage_matrix, **kwargs)
-
-
-def plot_subgroups(data: pd.DataFrame,
-                   x_column: str,
-                   y_column: str,
-                   target: Iterable,
-                   subgroups: pd.DataFrame,
-                   ax=None):
-    """Plot a 2D scatterplot showing the samples, its classes, and the subgroups passed as parameters
-    to the function"""
-
-    if ax is None:
-        ax = plt.gca()
-
-    sns.scatterplot(data=data,
-                    x=x_column,
-                    y=y_column,
-                    hue=target,
-                    s=20, alpha=0.5, ax=ax)
-    # Rectangle displacement, estimated from my head
-    mean_delta = 0.02
-    for subgroup in subgroups.itertuples(index=False):
-        delta = mean_delta + np.random.random()/50
-        # extract the subgroup limits
-        rules = subgroup.subgroup.selectors
-        if len(rules) < 2:
-            rule = rules[0]
-            if isinstance(rule, ps.IntervalSelector):
-                rule1_upperbound = rule.upper_bound
-                rule1_lowerbound = rule.lower_bound
-                rule1_attribute = rule.attribute_name
-                if rule1_lowerbound == float("-inf"):
-                    rule1_lowerbound = data[rule1_attribute].min()
-                if rule1_upperbound == float("inf"):
-                    rule1_upperbound = data[rule1_attribute].max()
-            if rule1_attribute == x_column:
-                rule2_attribute = y_column
-            else:
-                rule2_attribute = x_column
-            rule2_lowerbound = data[rule2_attribute].min()
-            rule2_upperbound = data[rule2_attribute].max()
-        else:
-            rule1, rule2 = subgroup.subgroup.selectors
-            if isinstance(rule1, ps.IntervalSelector):
-                rule1_upperbound = rule1.upper_bound
-                rule1_lowerbound = rule1.lower_bound
-                rule1_attribute = rule1.attribute_name
-                if rule1_lowerbound == float("-inf"):
-                    rule1_lowerbound = data[rule1_attribute].min()
-                if rule1_upperbound == float("inf"):
-                    rule1_upperbound = data[rule1_attribute].max()
-            else:
-                raise(NotImplementedError("I still can't deal with non numeric features!"))
-            if isinstance(rule2, ps.IntervalSelector):
-                rule2_upperbound = rule2.upper_bound
-                rule2_lowerbound = rule2.lower_bound
-                rule2_attribute = rule2.attribute_name
-                if rule2_lowerbound == float("-inf"):
-                    rule2_lowerbound = data[rule2_attribute].min()
-                if rule2_upperbound == float("inf"):
-                    rule2_upperbound = data[rule2_attribute].max()
-            else:
-                raise(NotImplementedError("I still can't deal with non numeric features!"))
-        # draw a red or green rectangle around the region of interest
-        if subgroup.mean_sg > subgroup.mean_dataset:
-            color = 'red'
-        else:
-            color = 'green'
-        if rule1_attribute == x_column:
-            ax.add_patch(plt.Rectangle((rule1_lowerbound - delta, rule2_lowerbound - delta),
-                                       width=rule1_upperbound - rule1_lowerbound + 2*delta,
-                                       height=rule2_upperbound - rule2_lowerbound + 2*delta,
-                                       fill=False, edgecolor=color, linewidth=1))
-            ax.text(rule1_lowerbound, rule2_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
-            # ax.text(rule1_upperbound, rule2_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
-        else:
-            ax.add_patch(plt.Rectangle((rule2_lowerbound - delta, rule1_lowerbound - delta),
-                                       width=rule2_upperbound - rule2_lowerbound + 2*delta,
-                                       height=rule1_upperbound - rule1_lowerbound + 2*delta,
-                                       fill=False, edgecolor=color, linewidth=1))
-            ax.text(rule2_lowerbound, rule1_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
-            # ax.text(rule2_upperbound, rule1_upperbound, round(subgroup.mean_dataset, 4), fontsize=8)
-    return ax
+from eval_pipeline import plot_subgroups, plot_dendrogram
+from utils import boolean_jaccard, sets_jaccard
 
 
 # import some data to play with
