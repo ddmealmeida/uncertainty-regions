@@ -1,10 +1,10 @@
+import time
 import numpy as np
 import pandas as pd
 from itertools import chain
 from sklearn import datasets
 from ucimlrepo import fetch_ucirepo
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
 
 from baselines.lpr import run_lpr_baseline
 from baselines.slice_finder import run_sf_baseline
@@ -14,10 +14,9 @@ from utils import calculate_coverage_metrics, convert_binary_columns
 
 # Add datasets to the list below, and run the pipeline for each one.
 dataset_list = []
-dataset_dict = {}
 # Moons Dataset
 X, y = datasets.make_moons(1000, noise=0.05, random_state=13)
-dataset_list.append({'dataset': 'moons',
+dataset_list.append({'dataset': 'Moons',
                      'X': pd.DataFrame(X, columns=['x1', 'x2']),
                      'y': y})
 
@@ -26,7 +25,7 @@ iris = datasets.load_iris()
 X = iris.data
 y_multi = iris.target
 y = (y_multi == 2).astype(int)
-dataset_list.append({'dataset': 'iris',
+dataset_list.append({'dataset': 'Iris',
                      'X': pd.DataFrame(X, columns=iris.feature_names),
                      'y': y})
 
@@ -35,7 +34,7 @@ wine_quality = fetch_ucirepo(id=186)
 # data (as pandas dataframes)
 X = wine_quality.data.features
 y = (wine_quality.data.targets > 5).astype(int)
-dataset_list.append({'dataset': 'wine',
+dataset_list.append({'dataset': 'Wine',
                      'X': X,
                      'y': y['quality']})
 
@@ -49,7 +48,7 @@ X = X.select_dtypes(include=np.number)
 y = student_performance.data.targets
 # Good, Very Good or Excellent Performance
 y = (y['G3'] >= 14).astype(int)
-dataset_list.append({'dataset': 'student_performance',
+dataset_list.append({'dataset': 'Student Performance',
                      'X': X,
                      'y': y})
 
@@ -58,7 +57,7 @@ cdc_diabetes_health_indicators = fetch_ucirepo(id=891)
 # data (as pandas dataframes)
 X = cdc_diabetes_health_indicators.data.features
 y = cdc_diabetes_health_indicators.data.targets
-dataset_list.append({'dataset': 'diabetes',
+dataset_list.append({'dataset': 'Diabetes',
                      'X': X,
                      'y': y['Diabetes_binary']})
 
@@ -75,16 +74,25 @@ for d in dataset_list:
     high_error = X_sd['errors'] > 0.5
 
     # Run the proposed pipeline
+    start_time = time.time()
     df = run_subgroup_discovery(X_sd.drop(columns='errors'), X_sd['errors'], a=0.5, result_size=10)
     ac = run_hierarchical_clustering(df)
     distance_threshold = 0.5
     df = filter_redundant_subgroups(df, ac, distance_threshold)
+    end_time = time.time()
+    duration = (end_time - start_time)/60
 
     # Run baseline 1 - LPRs
+    start_time = time.time()
     df_regras = run_lpr_baseline(X_sd, high_error, len(df))
+    end_time = time.time()
+    duration_lpr = (end_time - start_time)/60
 
     # Run baseline 2 - Slice Finder
+    start_time = time.time()
     slices, slice_cov = run_sf_baseline(lr, X_sd, d['y'], len(df))
+    end_time = time.time()
+    duration_sf = (end_time - start_time)/60
 
     # Calculate metrics for main subgroups
     cumulative_coverage, cumulative_precision = calculate_coverage_metrics(df, high_error)
@@ -102,34 +110,57 @@ for d in dataset_list:
                             "Precision": np.concatenate((cumulative_precision, cumulative_precision_lpr,
                                                          cumulative_precision_sf)),
                             "Strategy": ['Proposed Pipeline'] * len(cumulative_coverage) +
-                                        ['Baseline_LPR'] * len(cumulative_coverage_lpr) +
-                                        ['Baseline_SF'] * len(cumulative_coverage_sf),
-                            "Dataset": d["dataset"]})
+                                        ['LPR Baseline'] * len(cumulative_coverage_lpr) +
+                                        ['SF Baseline'] * len(cumulative_coverage_sf),
+                            "Dataset": d["dataset"],
+                            "Size": len(d['X']),
+                            "Duration": [duration] * len(cumulative_coverage) +
+                                        [duration_lpr] * len(cumulative_coverage_lpr) +
+                                        [duration_sf] * len(cumulative_coverage_sf)})
     results_df = pd.concat([results_df, df_plot], axis=0)
 
 # Processing the final results
-results_df['f1-Score'] = 2 * (results_df['Precision'] * results_df['Recall']) / (results_df['Precision'] + results_df['Recall'])
-
-# Create a ranking for each combination of Dataset and Number of Groups
-def get_rank(group):
-    # Sort by f1-Score in descending order and assign ranks
-    return group['f1-Score'].rank(ascending=False, method='min')
+results_df['f1-Score'] = (2 * (results_df['Precision'] * results_df['Recall']) /
+                          (results_df['Precision'] + results_df['Recall']))
 
 # Group by Dataset and Number of Groups, then calculate ranks
+results_df.to_csv('results_df.csv', index=False)
 ranked_results = results_df.copy()
 ranked_results['Rank'] = ranked_results.groupby(['Dataset', 'Number of Groups'])['f1-Score'].rank(ascending=False,
                                                                                                   method='min')
+# Compute the average rankings for each dataset and strategy, and save in a new dataframe.
+final_view = ranked_results.groupby(['Dataset', 'Strategy']).agg({'Rank': 'mean',
+                                                                  'Size': 'first',
+                                                                  'Duration': 'first'}).reset_index()
 
-# Optional: Create a more readable view of the results
-ranked_view = ranked_results.pivot_table(
-    index=['Dataset', 'Number of Groups'],
-    columns='Strategy',
-    values=['f1-Score', 'Rank']
-).round(3)
-
-final_view = ranked_results.groupby(['Dataset', 'Strategy'])['Rank'].mean().reset_index()
-final_view = final_view.pivot_table(
+# First create the pivot table for Rank and Duration
+pivot_metrics = final_view.pivot_table(
     index=['Dataset'],
     columns='Strategy',
-    values='Rank').reset_index()
-final_view.columns.name = None
+    values=['Rank', 'Duration']
+).reset_index()
+
+# Get a single Size column (taking the first occurrence for each Dataset)
+size_column = final_view.groupby('Dataset')['Size'].first()
+
+# Combine the pivot table with the size column
+final_view = pivot_metrics.set_index('Dataset')
+final_view['Size'] = size_column
+final_view = final_view.reset_index()
+final_view.rename(columns={'Rank': 'Average Rank', 'Duration': 'Run Time (min)'}, inplace=True)
+
+# Reorder the columns
+new_order = [('Dataset', ''),
+             ('Size', ''),
+             ('Run Time (min)', 'LPR Baseline'),
+             ('Run Time (min)', 'SF Baseline'),
+             ('Run Time (min)', 'Proposed Pipeline'),
+             ('Average Rank', 'LPR Baseline'),
+             ('Average Rank', 'SF Baseline'),
+             ('Average Rank', 'Proposed Pipeline')]
+
+# Reorder the DataFrame
+final_view = final_view[new_order]
+
+print(final_view.drop(columns=['Run Time (min)']).to_latex(index=False, float_format="{:.2f}".format))
+print(final_view.drop(columns=['Average Rank']).to_latex(index=False, float_format="{:.2f}".format))
