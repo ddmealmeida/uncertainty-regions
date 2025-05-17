@@ -242,3 +242,235 @@ def run_subgroup_comparison(df_dict: dict):
         set_dict[model] = set(df['subgroup'])
     venn(set_dict)
     plt.show()
+
+
+def plot_subgroups_with_zoom(data: pd.DataFrame,
+                             x_column: str,
+                             y_column: str,
+                             target: Iterable,
+                             subgroups: pd.DataFrame,
+                             figsize=(12, 5),
+                             subplot_ratio=0.5):
+    """
+    Plot a 2D scatterplot showing the samples, its classes, and the subgroups passed as parameters,
+    along with a zoomed-in view of the data points inside each subgroup.
+
+    Args:
+        data (pd.DataFrame): DataFrame containing the data to plot
+        x_column (str): Column name for x-axis
+        y_column (str): Column name for y-axis
+        target (Iterable): Values for the hue parameter (classes)
+        subgroups (pd.DataFrame): DataFrame containing subgroup information
+        figsize (tuple): Figure size (width, height)
+        subplot_ratio (float): Ratio between main plot and zoom plot widths
+
+    Returns:
+        fig, (ax1, ax2): Figure and axes objects
+    """
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize,
+                                   gridspec_kw={'width_ratios': [1 - subplot_ratio, subplot_ratio]})
+
+    # Plot the main view with all data points and subgroups
+    ax1 = plot_subgroups(data, x_column, y_column, target, subgroups, ax=ax1)
+    ax1.set_title("Full View")
+
+    # Add jitter to columns that have up to 10 unique values
+    jittered_data = data.copy()
+    for col in data.columns:
+        if data[col].nunique() <= 20:
+            jittered_data[col] = data[col] + (np.random.random(len(data)) - 0.5) * data[col].std() / 10
+
+    # Find the boundaries of the subgroups to create a zoomed-in view
+    x_min, x_max = float('inf'), float('-inf')
+    y_min, y_max = float('inf'), float('-inf')
+
+    # Keep track of points inside any subgroup for coloring
+    points_in_subgroups = np.zeros(len(data), dtype=bool)
+
+    # Extract boundaries for each subgroup
+    for subgroup in subgroups.itertuples(index=False):
+        # extract the subgroup limits
+        rules = subgroup.subgroup.selectors
+        if len(rules) < 2:
+            rule = rules[0]
+            if isinstance(rule, ps.IntervalSelector):
+                rule1_upperbound = rule.upper_bound
+                rule1_lowerbound = rule.lower_bound
+                rule1_attribute = rule.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            if rule1_attribute == x_column:
+                rule2_attribute = y_column
+                # Update x boundaries
+                x_min = min(x_min, rule1_lowerbound)
+                x_max = max(x_max, rule1_upperbound)
+                # Use full range for y
+                rule2_lowerbound = data[rule2_attribute].min()
+                rule2_upperbound = data[rule2_attribute].max()
+                # Update y boundaries
+                y_min = min(y_min, rule2_lowerbound)
+                y_max = max(y_max, rule2_upperbound)
+                # Mark points in this subgroup
+                points_in_subgroup = (data[rule1_attribute] >= rule1_lowerbound) & \
+                                     (data[rule1_attribute] <= rule1_upperbound)
+            else:
+                rule2_attribute = x_column
+                # Use full range for x
+                rule2_lowerbound = data[rule2_attribute].min()
+                rule2_upperbound = data[rule2_attribute].max()
+                # Update x boundaries
+                x_min = min(x_min, rule2_lowerbound)
+                x_max = max(x_max, rule2_upperbound)
+                # Update y boundaries
+                y_min = min(y_min, rule1_lowerbound)
+                y_max = max(y_max, rule1_upperbound)
+                # Mark points in this subgroup
+                points_in_subgroup = (data[rule1_attribute] >= rule1_lowerbound) & \
+                                     (data[rule1_attribute] <= rule1_upperbound)
+        else:
+            rule1, rule2 = subgroup.subgroup.selectors
+            if isinstance(rule1, ps.IntervalSelector):
+                rule1_upperbound = rule1.upper_bound
+                rule1_lowerbound = rule1.lower_bound
+                rule1_attribute = rule1.attribute_name
+                if rule1_lowerbound == float("-inf"):
+                    rule1_lowerbound = data[rule1_attribute].min()
+                if rule1_upperbound == float("inf"):
+                    rule1_upperbound = data[rule1_attribute].max()
+            else:
+                raise (NotImplementedError("I still can't deal with non numeric features!"))
+
+            if isinstance(rule2, ps.IntervalSelector):
+                rule2_upperbound = rule2.upper_bound
+                rule2_lowerbound = rule2.lower_bound
+                rule2_attribute = rule2.attribute_name
+                if rule2_lowerbound == float("-inf"):
+                    rule2_lowerbound = data[rule2_attribute].min()
+                if rule2_upperbound == float("inf"):
+                    rule2_upperbound = data[rule2_attribute].max()
+            else:
+                raise (NotImplementedError("I still can't deal with non numeric features!"))
+
+            if rule1_attribute == x_column:
+                # Update x boundaries
+                x_min = min(x_min, rule1_lowerbound)
+                x_max = max(x_max, rule1_upperbound)
+                # Update y boundaries
+                y_min = min(y_min, rule2_lowerbound)
+                y_max = max(y_max, rule2_upperbound)
+                # Mark points in this subgroup
+                points_in_subgroup = (data[rule1_attribute] >= rule1_lowerbound) & \
+                                     (data[rule1_attribute] <= rule1_upperbound) & \
+                                     (data[rule2_attribute] >= rule2_lowerbound) & \
+                                     (data[rule2_attribute] <= rule2_upperbound)
+            else:
+                # Update x boundaries
+                x_min = min(x_min, rule2_lowerbound)
+                x_max = max(x_max, rule2_upperbound)
+                # Update y boundaries
+                y_min = min(y_min, rule1_lowerbound)
+                y_max = max(y_max, rule1_upperbound)
+                # Mark points in this subgroup
+                points_in_subgroup = (data[rule1_attribute] >= rule1_lowerbound) & \
+                                     (data[rule1_attribute] <= rule1_upperbound) & \
+                                     (data[rule2_attribute] >= rule2_lowerbound) & \
+                                     (data[rule2_attribute] <= rule2_upperbound)
+
+        points_in_subgroups = points_in_subgroups | points_in_subgroup
+
+    # Add some padding to the zoom view (10% on each side)
+    x_padding = (x_max - x_min) * 0.1
+    y_padding = (y_max - y_min) * 0.1
+
+    # Plot only the data points inside any subgroup in the zoom view
+    zoomed_data = jittered_data[points_in_subgroups].copy()
+    if len(zoomed_data) > 0:
+        zoomed_target = np.array(target)[points_in_subgroups] if hasattr(target, '__len__') else target[
+            points_in_subgroups]
+
+        # Plot zoomed data
+        sns.scatterplot(data=zoomed_data,
+                        x=x_column,
+                        y=y_column,
+                        hue=zoomed_target,
+                        s=50, alpha=0.7, ax=ax2)
+
+        # Set the boundaries for the zoom view
+        ax2.set_xlim(x_min - x_padding, x_max + x_padding)
+        ax2.set_ylim(y_min - y_padding, y_max + y_padding)
+        ax2.set_title("Zoomed View of Subgroup")
+
+        # Draw the subgroup boundaries in the zoomed view as well
+        mean_delta = 0.02
+        for subgroup in subgroups.itertuples(index=False):
+            delta = mean_delta + np.random.random() / 50
+            rules = subgroup.subgroup.selectors
+
+            if len(rules) < 2:
+                rule = rules[0]
+                if isinstance(rule, ps.IntervalSelector):
+                    rule1_upperbound = rule.upper_bound
+                    rule1_lowerbound = rule.lower_bound
+                    rule1_attribute = rule.attribute_name
+                    if rule1_lowerbound == float("-inf"):
+                        rule1_lowerbound = data[rule1_attribute].min()
+                    if rule1_upperbound == float("inf"):
+                        rule1_upperbound = data[rule1_attribute].max()
+                if rule1_attribute == x_column:
+                    rule2_attribute = y_column
+                else:
+                    rule2_attribute = x_column
+                rule2_lowerbound = data[rule2_attribute].min()
+                rule2_upperbound = data[rule2_attribute].max()
+            else:
+                rule1, rule2 = subgroup.subgroup.selectors
+                if isinstance(rule1, ps.IntervalSelector):
+                    rule1_upperbound = rule1.upper_bound
+                    rule1_lowerbound = rule1.lower_bound
+                    rule1_attribute = rule1.attribute_name
+                    if rule1_lowerbound == float("-inf"):
+                        rule1_lowerbound = data[rule1_attribute].min()
+                    if rule1_upperbound == float("inf"):
+                        rule1_upperbound = data[rule1_attribute].max()
+                else:
+                    raise (NotImplementedError("I still can't deal with non numeric features!"))
+                if isinstance(rule2, ps.IntervalSelector):
+                    rule2_upperbound = rule2.upper_bound
+                    rule2_lowerbound = rule2.lower_bound
+                    rule2_attribute = rule2.attribute_name
+                    if rule2_lowerbound == float("-inf"):
+                        rule2_lowerbound = data[rule2_attribute].min()
+                    if rule2_upperbound == float("inf"):
+                        rule2_upperbound = data[rule2_attribute].max()
+                else:
+                    raise (NotImplementedError("I still can't deal with non numeric features!"))
+
+            # Draw rectangles in the zoomed view with the same color logic
+            if subgroup.mean_sg > subgroup.mean_dataset:
+                color = 'red'
+            else:
+                color = 'green'
+
+            if rule1_attribute == x_column:
+                ax2.add_patch(plt.Rectangle((rule1_lowerbound - delta, rule2_lowerbound - delta),
+                                            width=rule1_upperbound - rule1_lowerbound + 2 * delta,
+                                            height=rule2_upperbound - rule2_lowerbound + 2 * delta,
+                                            fill=False, edgecolor=color, linewidth=1))
+                ax2.text(rule1_lowerbound, rule2_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
+            else:
+                ax2.add_patch(plt.Rectangle((rule2_lowerbound - delta, rule1_lowerbound - delta),
+                                            width=rule2_upperbound - rule2_lowerbound + 2 * delta,
+                                            height=rule1_upperbound - rule1_lowerbound + 2 * delta,
+                                            fill=False, edgecolor=color, linewidth=1))
+                ax2.text(rule2_lowerbound, rule1_lowerbound, round(subgroup.mean_sg, 4), fontsize=8)
+    else:
+        ax2.text(0.5, 0.5, "No data points in subgroups",
+                 horizontalalignment='center', verticalalignment='center',
+                 transform=ax2.transAxes)
+        ax2.set_title("No Data in Subgroup")
+
+    plt.tight_layout()
+    return fig, (ax1, ax2)

@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
 from eval_pipeline import (run_subgroup_discovery, run_hierarchical_clustering, filter_redundant_subgroups,
-                           plot_subgroups, run_subgroup_comparison)
+                           plot_subgroups, run_subgroup_comparison, plot_subgroups_with_zoom)
 
 run_training = False
 
@@ -81,14 +81,24 @@ for model, df in df_dict.items():
     df_dict[model] = filtered_df.copy()
 
 # Plot one subgroup for easier understanding
-selected_subgroup = 2
+selected_subgroup = 3
 # Plot the subgroups in a 2d scatterplot
 plt.figure()
 plot_subgroups(X_test,
-               'income', 'proposed_credit_limit',
+               'income', 'credit_risk_score',
                y,
                df_dict['Random Forest'].loc[[selected_subgroup], ['subgroup', 'mean_sg', 'mean_dataset']])
 plt.show()
+
+selected_subgroup = 3
+fig, (ax1, ax2) = plot_subgroups_with_zoom(
+    X_test,
+    'income', 'credit_risk_score',
+    y,
+    df_dict['Random Forest'].loc[[selected_subgroup], ['subgroup', 'mean_sg', 'mean_dataset']]
+)
+plt.show()
+
 
 # Finally, analyze how similar the subgroups found for each model are
 run_subgroup_comparison(df_dict)
