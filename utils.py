@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from scipy.cluster.hierarchy import dendrogram
 
 def boolean_jaccard(set1, set2):
@@ -104,3 +105,47 @@ def convert_binary_columns(df):
         df_copy[col] = df_copy[col].map(mapping)
 
     return df_copy
+
+
+def extract_common_subgroups(df_dict):
+    """
+    Extract subgroups that appear in all three models' dataframes.
+
+    Args:
+        df_dict (dict): Dictionary with model names as keys and subgroup DataFrames as values
+
+    Returns:
+        pd.DataFrame: DataFrame containing only the subgroups that appear in all three models
+    """
+    # Create sets of subgroup descriptions for each model
+    subgroup_sets = {}
+    for model_name, df in df_dict.items():
+        # Convert subgroups to strings for comparison
+        subgroup_sets[model_name] = set(df['subgroup'].astype(str))
+
+    # Find intersection of all sets (subgroups that appear in all models)
+    common_subgroups = set.intersection(*subgroup_sets.values())
+
+    # Create a list to store rows from each model for common subgroups
+    common_rows = []
+
+    # Extract rows for common subgroups from each model's dataframe
+    for model_name, df in df_dict.items():
+        # Filter rows where subgroup (as string) is in the common set
+        model_common_rows = df[df['subgroup'].astype(str).isin(common_subgroups)].copy()
+
+        # Add model name column
+        model_common_rows['model'] = model_name
+
+        # Add to the list of common rows
+        common_rows.append(model_common_rows)
+
+    # Combine all common rows into a single DataFrame
+    if common_rows:
+        result_df = pd.concat(common_rows, axis=0)
+        # Sort by model name for better organization
+        result_df = result_df.sort_values(by=['model'])
+        return result_df
+    else:
+        # Return empty DataFrame with appropriate columns if no common subgroups
+        return pd.DataFrame(columns=['model', 'quality', 'subgroup', 'size_sg', 'mean_sg', 'mean_dataset', 'covered'])

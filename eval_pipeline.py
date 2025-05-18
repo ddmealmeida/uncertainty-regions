@@ -388,8 +388,15 @@ def plot_subgroups_with_zoom(data: pd.DataFrame,
     # Plot only the data points inside any subgroup in the zoom view
     zoomed_data = jittered_data[points_in_subgroups].copy()
     if len(zoomed_data) > 0:
-        zoomed_target = np.array(target)[points_in_subgroups] if hasattr(target, '__len__') else target[
-            points_in_subgroups]
+        # Make sure to use the same indices for target to match the filtered data
+        if isinstance(target, pd.Series):
+            zoomed_target = target.loc[zoomed_data.index]
+        elif isinstance(target, np.ndarray) and len(target) == len(data):
+            # If target is a numpy array, we need to filter it using the same boolean mask
+            zoomed_target = target[points_in_subgroups]
+        else:
+            # For other cases, try to use the same indices
+            zoomed_target = target
 
         # Plot zoomed data
         sns.scatterplot(data=zoomed_data,
